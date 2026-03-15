@@ -84,7 +84,6 @@ export async function sendWave(
     useWaveStore.getState().setWaving(true);
 
     const session = await getFreshSession();
-
     if (!session) {
       logger.error("Cannot send wave: no active session");
       return { status: "error" };
@@ -92,9 +91,6 @@ export async function sendWave(
 
     const { data, error } = await supabase.functions.invoke("send-wave", {
       body: { target_ephemeral_token: targetEphemeralToken },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
     });
 
     if (error) {
@@ -190,9 +186,6 @@ export async function undoWave(
         target_ephemeral_token: targetEphemeralToken,
         action: "undo",
       },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
     });
 
     if (error) {
@@ -230,9 +223,6 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
 
     const { error } = await supabase.functions.invoke("remove-match", {
       body: { match_id: matchId },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
     });
 
     if (error) {
@@ -246,5 +236,95 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
   } catch (error) {
     logger.error("Remove match error", error);
     return false;
+  }
+}
+
+/**
+ * Block a user. Optionally reports them and removes any existing match.
+ * The blocked user won't appear on radar and can't wave at the blocker.
+ */
+export async function blockUser(params: {
+  blockedId: string;
+  displayName?: string;
+  matchId?: string;
+  reason?: string;
+  details?: string;
+}): Promise<boolean> {
+  try {
+    const session = await getFreshSession();
+    if (!session) return false;
+
+    const { error } = await supabase.functions.invoke("block-user", {
+      body: {
+        blocked_id: params.blockedId,
+        display_name: params.displayName,
+        match_id: params.matchId,
+        reason: params.reason,
+        details: params.details,
+      },
+    });
+
+    if (error) {
+      logger.error("Block user failed", error);
+      return false;
+    }
+
+    // Remove from local store
+    if (params.matchId) {
+      useWaveStore.getState().removeMatch(params.matchId);
+    }
+
+    logger.wave("User blocked", { blockedId: params.blockedId });
+    return true;
+  } catch (error) {
+    logger.error("Block user error", error);
+    return false;
+  }
+}
+
+/**
+ * Unblock a user via RPC.
+ */
+export async function unblockUser(blockedId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.rpc("unblock_user", {
+      p_blocked_id: blockedId,
+    });
+
+    if (error) {
+      logger.error("Unblock user failed", error);
+      return false;
+    }
+
+    logger.wave("User unblocked", { blockedId });
+    return true;
+  } catch (error) {
+    logger.error("Unblock user error", error);
+    return false;
+  }
+}
+
+/**
+ * Fetch the list of blocked users for the settings screen.
+ */
+export async function getBlockedUsers(): Promise<
+  { blockedId: string; displayName: string | null; createdAt: string }[]
+> {
+  try {
+    const { data, error } = await supabase.rpc("get_blocked_users");
+
+    if (error) {
+      logger.error("Get blocked users failed", error);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      blockedId: row.blocked_id,
+      displayName: row.blocked_display_name,
+      createdAt: row.created_at,
+    }));
+  } catch (error) {
+    logger.error("Get blocked users error", error);
+    return [];
   }
 }

@@ -92,7 +92,7 @@ export function PeerDetailModal({
         <TouchableOpacity
           onPress={() => { onClose(); router.push("/(main)/history"); }}
           className="bg-wave-primary rounded-xl py-3 items-center mb-3"
-          accessibilityLabel="View All Matches"
+          accessibilityLabel={t("peerDetail.viewAllMatches")}
           accessibilityRole="button"
         >
           <Text className="text-white text-sm font-semibold">{t("peerDetail.viewAllMatches")}</Text>
@@ -103,7 +103,7 @@ export function PeerDetailModal({
       <TouchableOpacity
         onPress={onClose}
         className="bg-wave-bg rounded-xl py-3 items-center"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("peerDetail.close")}
         accessibilityRole="button"
       >
         <Text className="text-white text-sm font-semibold">{t("peerDetail.close")}</Text>

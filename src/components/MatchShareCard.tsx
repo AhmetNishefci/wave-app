@@ -54,7 +54,7 @@ export function MatchShareCard() {
         disabled={sharing}
         className="flex-row items-center justify-center py-3"
         activeOpacity={0.7}
-        accessibilityLabel="Share match"
+        accessibilityLabel={t("match.shareMatch")}
         accessibilityRole="button"
       >
         {sharing ? (

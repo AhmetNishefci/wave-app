@@ -649,9 +649,16 @@ export default function RadarScreen() {
                 {t("radar.discoverTitle")}
               </Text>
               <Text className="text-wave-muted text-sm text-center px-8 leading-5">
-                Tap <Text className="text-wave-primary font-semibold">{t("radar.startDiscovery")}</Text> to
-                find people around you. Wave at someone — if they wave back,
-                you'll match and see each other's Instagram.
+                {t("radar.discoverDescription").split("<bold>").map((part, i) => {
+                  if (i === 0) return part;
+                  const [bold, rest] = part.split("</bold>");
+                  return (
+                    <Text key={i}>
+                      <Text className="text-wave-primary font-semibold">{bold}</Text>
+                      {rest}
+                    </Text>
+                  );
+                })}
               </Text>
 
               {/* Invite CTA */}

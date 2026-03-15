@@ -195,6 +195,33 @@ export function triggerFakeMatch(): void {
 }
 
 /**
+ * DEV ONLY: Get fake blocked users for settings UI testing.
+ */
+export function getFakeBlockedUsers() {
+  const now = Date.now();
+  const names = [
+    "@sarah.wave", "mia_vibes", null, "@jake_adventures", "@emma.lol",
+    "alex_nearby", null, "@sofia.world", "noah_runs", "@olivia.cfg",
+    "liam_beats", null, "@ava.design", "lucas_grind", "@chloe.fit",
+    "ethan_travels", "@zoe.codes", null, "mason_plays", "@lily.snap",
+    "james_chill", null, "@ella.art", "ben_skates", "@mila.nyc",
+    "leo_waves", "@aria.uk", "henry_lifts", null, "@grace.vibes",
+    "jack_dev", "@harper.co", null, "daniel_bmx", "@layla.music",
+    "owen_chef", "@riley.sun", "seb_photo", null, "@nora.yoga",
+    "will_climb", "@isla.reads", "cam_surfs", "@maya.ink", null,
+    "ryan_drums", "@luna.sky", "max_hikes", "@stella.flow", null,
+    "adam_dj", "@violet.draws", "kai_boards", "@hazel.bakes", null,
+    "theo_games", "@ivy.runs", "finn_codes", "@ruby.sings", "@jade.pixels",
+  ];
+
+  return names.map((name, i) => ({
+    blockedId: `fake-blocked-${String(i + 1).padStart(3, "0")}`,
+    displayName: name,
+    createdAt: new Date(now - (i + 1) * 3600_000 * 4).toISOString(),
+  }));
+}
+
+/**
  * DEV ONLY: Clear all fake matches.
  */
 export function clearFakeMatches(): void {

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Linking, TextInput, Switch } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Linking, TextInput, Switch, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,8 @@ import { useWaveStore } from "@/stores/waveStore";
 import { useAuthStore } from "@/stores/authStore";
 import { signOut } from "@/services/auth";
 import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference, syncLocaleToServer } from "@/services/profile";
+import { getBlockedUsers, unblockUser } from "@/services/wave/waves";
+import { getFakeBlockedUsers } from "@/utils/seedPeers";
 import { requestLocationPermission, hasLocationPermission, isLocationBlocked } from "@/services/location";
 import { supabase } from "@/services/supabase";
 import { waveBleManager } from "@/services/ble/bleManager";
@@ -50,8 +52,71 @@ export default function SettingsScreen() {
 
   const [deleting, setDeleting] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<{ blockedId: string; displayName: string | null; createdAt: string }[]>([]);
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
+  const [unblockTarget, setUnblockTarget] = useState<{ blockedId: string; displayName: string | null } | null>(null);
+  const [unblocking, setUnblocking] = useState(false);
+  const [blockedSearch, setBlockedSearch] = useState("");
+  const [showSupport, setShowSupport] = useState(false);
+  const [supportCategory, setSupportCategory] = useState<string | null>(null);
+  const [supportDetails, setSupportDetails] = useState("");
+  const [submittingTicket, setSubmittingTicket] = useState(false);
   const langCode = i18n.language?.substring(0, 2) ?? "en";
   const currentLang = LANGUAGES.find((l) => l.code === langCode) ?? LANGUAGES[0];
+
+  // Load blocked users when the sheet opens
+  const openBlockedUsers = useCallback(() => {
+    setUnblockTarget(null);
+    setBlockedSearch("");
+    setLoadingBlocked(true);
+    setShowBlockedUsers(true);
+    getBlockedUsers().then((users) => {
+      setBlockedUsers(users.length > 0 || !__DEV__ ? users : getFakeBlockedUsers());
+      setLoadingBlocked(false);
+    });
+  }, []);
+
+  const handleUnblock = (blockedId: string, displayName: string | null) => {
+    setUnblockTarget({ blockedId, displayName });
+  };
+
+  const confirmUnblock = async () => {
+    if (!unblockTarget) return;
+    setUnblocking(true);
+    const success = await unblockUser(unblockTarget.blockedId);
+    setUnblocking(false);
+    if (success) {
+      setBlockedUsers((prev) => prev.filter((u) => u.blockedId !== unblockTarget.blockedId));
+      setUnblockTarget(null);
+      showToast(t("settings.unblocked"));
+    } else {
+      showToast(t("settings.unblockError"), "error");
+    }
+  };
+
+  const handleSubmitTicket = async () => {
+    if (!supportCategory) return;
+    setSubmittingTicket(true);
+    try {
+      const { error } = await supabase.rpc("create_support_ticket", {
+        p_category: supportCategory,  // Already stored as key (bug, account, feature, other)
+        p_details: supportDetails.trim() || null,
+      });
+      setSubmittingTicket(false);
+      if (error) {
+        showToast(t("settings.ticketError"), "error");
+      } else {
+        setShowSupport(false);
+        setSupportCategory(null);
+        setSupportDetails("");
+        showToast(t("settings.ticketSubmitted"));
+      }
+    } catch {
+      setSubmittingTicket(false);
+      showToast(t("settings.ticketError"), "error");
+    }
+  };
 
   const handleChangeLanguage = (code: string) => {
     impactLight();
@@ -676,34 +741,18 @@ export default function SettingsScreen() {
       {/* Safety */}
       <Section title={t("settings.safety")}>
         <TouchableOpacity
-          onPress={() => {
-            Alert.alert(
-              t("settings.reportUser"),
-              t("settings.reportDescription"),
-              [
-                { text: t("common.ok") },
-                {
-                  text: t("settings.emailSupport"),
-                  onPress: () => Linking.openURL("mailto:support@wave-app.com?subject=Report%20User"),
-                },
-              ],
-            );
-          }}
-          className="py-3"
+          onPress={openBlockedUsers}
+          className="py-3 flex-row justify-between items-center"
         >
-          <Text className="text-white text-sm">{t("settings.reportUser")}</Text>
+          <Text className="text-white text-sm">{t("settings.blockedUsers")}</Text>
+          <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => {
-            Alert.alert(
-              t("settings.blockUser"),
-              t("settings.blockDescription"),
-              [{ text: t("common.ok") }],
-            );
-          }}
-          className="py-3"
+          onPress={() => setShowSupport(true)}
+          className="py-3 flex-row justify-between items-center"
         >
-          <Text className="text-white text-sm">{t("settings.blockUser")}</Text>
+          <Text className="text-white text-sm">{t("settings.contactSupport")}</Text>
+          <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
         </TouchableOpacity>
       </Section>
 
@@ -786,7 +835,7 @@ export default function SettingsScreen() {
         >
           <View className="flex-row items-center">
             <Text className="text-lg mr-3">📱</Text>
-            <Text className="text-wave-muted text-sm font-semibold">System Default</Text>
+            <Text className="text-wave-muted text-sm font-semibold">{t("settings.systemDefault")}</Text>
           </View>
         </TouchableOpacity>
 
@@ -817,14 +866,218 @@ export default function SettingsScreen() {
         })}
       </View>
     </BottomSheet>
+
+    {/* Blocked users */}
+    <BottomSheet visible={showBlockedUsers} onClose={() => { setShowBlockedUsers(false); setBlockedSearch(""); }}>
+      {unblockTarget ? (
+        <>
+          {/* Unblock confirmation (inline, same BottomSheet) */}
+          <View className="items-center mb-5">
+            <Ionicons name="shield-checkmark-outline" size={32} color={COLORS.primary} style={{ marginBottom: 12 }} />
+            <Text className="text-white text-lg font-semibold">
+              {t("settings.unblock")}
+            </Text>
+            <Text className="text-wave-muted text-sm mt-2 text-center px-4">
+              {t("settings.unblockConfirm", { name: unblockTarget.displayName || t("history.someoneNearby") })}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={confirmUnblock}
+            disabled={unblocking}
+            className="w-full bg-wave-primary rounded-2xl py-4 items-center justify-center mb-2"
+            activeOpacity={0.8}
+          >
+            {unblocking ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Text className="text-white text-sm font-semibold">{t("settings.unblock")}</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setUnblockTarget(null)}
+            className="items-center py-2"
+            activeOpacity={0.7}
+          >
+            <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+          </TouchableOpacity>
+        </>
+      ) : loadingBlocked ? (
+        <View className="items-center py-8">
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        </View>
+      ) : (
+        <>
+          <Text className="text-white text-lg font-semibold text-center mb-1">{t("settings.blockedUsers")}</Text>
+          {blockedUsers.length > 0 && (
+            <Text className="text-wave-muted text-xs text-center mb-3">{t("settings.blockedCount", { count: blockedUsers.length })}</Text>
+          )}
+          {blockedUsers.length === 0 ? (
+            <Text className="text-wave-muted text-sm text-center py-8">{t("settings.noBlockedUsers")}</Text>
+          ) : (() => {
+            const q = blockedSearch.toLowerCase().replace(/^@/, "");
+            const filtered = q
+              ? blockedUsers.filter((u) => u.displayName?.toLowerCase().replace(/^@/, "").includes(q))
+              : blockedUsers;
+            return (
+              <>
+                {/* Search */}
+                <View className="bg-wave-bg rounded-xl flex-row items-center px-3 mb-3" style={{ height: 40 }}>
+                  <Ionicons name="search" size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
+                  <TextInput
+                    value={blockedSearch}
+                    onChangeText={setBlockedSearch}
+                    placeholder={t("settings.searchBlocked")}
+                    placeholderTextColor={COLORS.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    className="flex-1 text-white text-sm"
+                    style={{ paddingVertical: 0 }}
+                  />
+                  {blockedSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setBlockedSearch("")} className="pl-2">
+                      <Ionicons name="close-circle" size={16} color={COLORS.muted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {filtered.length === 0 ? (
+                  <Text className="text-wave-muted text-sm text-center py-6">{t("settings.noSearchResults")}</Text>
+                ) : (
+                  <ScrollView
+                    style={{ maxHeight: 350 }}
+                    showsVerticalScrollIndicator
+                    indicatorStyle="white"
+                    refreshControl={
+                      <RefreshControl
+                        refreshing={loadingBlocked}
+                        onRefresh={() => {
+                          setLoadingBlocked(true);
+                          getBlockedUsers().then((users) => {
+                            setBlockedUsers(users.length > 0 || !__DEV__ ? users : getFakeBlockedUsers());
+                            setLoadingBlocked(false);
+                          });
+                        }}
+                        tintColor={COLORS.primary}
+                      />
+                    }
+                  >
+                    <View style={{ gap: 8 }}>
+                      {filtered.map((user) => (
+                        <View key={user.blockedId} className="bg-wave-bg rounded-xl py-3 px-4 flex-row items-center justify-between">
+                          <View className="flex-1 mr-3">
+                            <Text className="text-white text-sm font-semibold">
+                              {user.displayName || t("history.someoneNearby")}
+                            </Text>
+                            <Text className="text-wave-muted text-xs mt-0.5">
+                              {formatDateTime(new Date(user.createdAt))}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleUnblock(user.blockedId, user.displayName)}
+                            className="bg-wave-primary/15 border border-wave-primary/30 rounded-lg px-4 py-2"
+                            activeOpacity={0.7}
+                          >
+                            <Text className="text-wave-primary text-xs font-semibold">{t("settings.unblock")}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                )}
+              </>
+            );
+          })()}
+        </>
+      )}
+    </BottomSheet>
+
+    {/* Support ticket */}
+    <BottomSheet visible={showSupport} onClose={() => { setShowSupport(false); setSupportCategory(null); setSupportDetails(""); }}>
+      <View className="items-center mb-5">
+        <Ionicons name="chatbubble-ellipses-outline" size={32} color={COLORS.primary} style={{ marginBottom: 12 }} />
+        <Text className="text-white text-lg font-semibold">{t("settings.supportTitle")}</Text>
+        <Text className="text-wave-muted text-sm mt-2 text-center">{t("settings.supportDescription")}</Text>
+      </View>
+
+      <View style={{ gap: 6 }} className="mb-4">
+        {[
+          { key: "bug", label: t("settings.supportBugReport"), icon: "bug-outline" as const },
+          { key: "account", label: t("settings.supportAccountIssue"), icon: "person-outline" as const },
+          { key: "feature", label: t("settings.supportFeatureRequest"), icon: "bulb-outline" as const },
+          { key: "other", label: t("settings.supportOther"), icon: "ellipsis-horizontal-outline" as const },
+        ].map((item) => {
+          const isSelected = supportCategory === item.key;
+          return (
+            <TouchableOpacity
+              key={item.key}
+              onPress={() => setSupportCategory(item.key)}
+              className={`rounded-xl py-3 px-4 flex-row items-center border ${
+                isSelected ? "bg-wave-primary/15 border-wave-primary/30" : "bg-wave-bg border-transparent"
+              }`}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={item.icon} size={20} color={isSelected ? COLORS.primary : COLORS.text} style={{ marginRight: 12 }} />
+              <Text className={`text-sm font-semibold flex-1 ${isSelected ? "text-white" : "text-wave-muted"}`}>{item.label}</Text>
+              {isSelected && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {supportCategory && (
+        <View className="bg-wave-bg rounded-xl px-4 mb-4" style={{ height: 80 }}>
+          <TextInput
+            value={supportDetails}
+            onChangeText={setSupportDetails}
+            placeholder={t("settings.supportDetailsPlaceholder")}
+            placeholderTextColor={COLORS.placeholder}
+            multiline
+            className="flex-1 text-white text-sm"
+            style={{ paddingVertical: 12, textAlignVertical: "top" }}
+            maxLength={1000}
+          />
+        </View>
+      )}
+
+      <TouchableOpacity
+        onPress={handleSubmitTicket}
+        disabled={!supportCategory || submittingTicket}
+        className={`w-full rounded-2xl py-4 items-center justify-center mb-2 ${supportCategory ? "bg-wave-primary" : "bg-wave-primary/30"}`}
+        activeOpacity={0.8}
+      >
+        {submittingTicket ? (
+          <ActivityIndicator size="small" color={COLORS.white} />
+        ) : (
+          <Text className={`text-sm font-semibold ${supportCategory ? "text-white" : "text-wave-muted"}`}>
+            {t("settings.submitTicket")}
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => { setShowSupport(false); setSupportCategory(null); setSupportDetails(""); }}
+        className="items-center py-2"
+        activeOpacity={0.7}
+      >
+        <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+      </TouchableOpacity>
+    </BottomSheet>
+
     </>
   );
 }
 
+function formatDateTime(date: Date): string {
+  const dateStr = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${dateStr}, ${timeStr}`;
+}
+
 function formatDob(dob: string): string {
   const d = new Date(dob + "T00:00:00");
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 function Section({

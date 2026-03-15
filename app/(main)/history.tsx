@@ -1,9 +1,9 @@
-import { View, Text, SectionList, TouchableOpacity, Share, Alert, ActivityIndicator, Linking, RefreshControl } from "react-native";
+import { View, Text, TextInput, SectionList, TouchableOpacity, Share, Alert, ActivityIndicator, RefreshControl } from "react-native";
 import { useMemo, useEffect, useRef, useCallback, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useWaveStore } from "@/stores/waveStore";
-import { removeMatchFromServer } from "@/services/wave/waves";
+import { removeMatchFromServer, blockUser } from "@/services/wave/waves";
 import { fetchMatchesFromServer, loadMoreMatches } from "@/services/wave/matches";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -65,8 +65,27 @@ export default function HistoryScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const sections = useMemo(() => groupByDate(matches), [matches]);
+  const filteredMatches = useMemo(() => {
+    if (!search.trim()) return matches;
+    const q = search.toLowerCase().replace(/^@/, "");
+    return matches.filter((m) => {
+      const ig = m.instagramHandle?.toLowerCase() ?? "";
+      const sc = m.snapchatHandle?.toLowerCase() ?? "";
+      return ig.includes(q) || sc.includes(q);
+    });
+  }, [matches, search]);
+
+  const sections = useMemo(() => groupByDate(filteredMatches), [filteredMatches]);
+
+  // Auto-close action sheet if the match was removed from the store
+  // (e.g. the other user blocked/removed us while the sheet was open)
+  useEffect(() => {
+    if (selectedMatch && !matches.some((m) => m.matchId === selectedMatch.matchId)) {
+      setSelectedMatch(null);
+    }
+  }, [matches, selectedMatch]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -133,6 +152,28 @@ export default function HistoryScreen() {
         </View>
       </View>
 
+      {/* Search bar — only show when there are matches */}
+      {matches.length > 0 && (
+        <View className="bg-wave-surface rounded-2xl flex-row items-center px-4 mb-4" style={{ height: 44 }}>
+          <Ionicons name="search" size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t("history.searchMatches")}
+            placeholderTextColor={COLORS.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="flex-1 text-white text-sm"
+            style={{ paddingVertical: 0 }}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")} className="pl-2">
+              <Ionicons name="close-circle" size={16} color={COLORS.muted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {matches.length === 0 ? (
         <View className="flex-1 items-center justify-center -mt-20">
           <View className="w-20 h-20 rounded-full bg-wave-surface items-center justify-center mb-4">
@@ -153,6 +194,11 @@ export default function HistoryScreen() {
               {t("history.inviteFriends")}
             </Text>
           </TouchableOpacity>
+        </View>
+      ) : filteredMatches.length === 0 ? (
+        <View className="flex-1 items-center justify-center -mt-20">
+          <Ionicons name="search" size={32} color={COLORS.muted} style={{ marginBottom: 12 }} />
+          <Text className="text-wave-muted text-sm">{t("history.noSearchResults")}</Text>
         </View>
       ) : (
         <SectionList
@@ -220,10 +266,10 @@ function MatchRow({
     : matchDate >= yesterday
       ? timeStr
       : matchDate >= thisWeekStart
-        ? `${matchDate.toLocaleDateString([], { weekday: "long" })}, ${timeStr}`
+        ? `${matchDate.toLocaleDateString("en-US", { weekday: "long" })}, ${timeStr}`
         : matchDate.getFullYear() === now.getFullYear()
-          ? `${matchDate.toLocaleDateString([], { month: "short", day: "numeric" })}, ${timeStr}`
-          : `${matchDate.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}, ${timeStr}`;
+          ? `${matchDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}, ${timeStr}`
+          : `${matchDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}, ${timeStr}`;
 
   const igHandle = match.instagramHandle;
   const scHandle = match.snapchatHandle;
@@ -250,7 +296,7 @@ function MatchRow({
               {displayName}
             </Text>
             <Text className="text-wave-muted text-xs mt-1">
-              Matched {matchLabel}
+              {t("history.matchedAt", { time: matchLabel })}
             </Text>
           </>
         ) : (
@@ -259,7 +305,7 @@ function MatchRow({
               {t("history.someoneNearby")}
             </Text>
             <Text className="text-wave-muted text-xs mt-1">
-              Matched {matchLabel} · {t("history.noSocials")}
+              {t("history.matchedAt", { time: matchLabel })} · {t("history.noSocials")}
             </Text>
           </>
         )}
@@ -288,93 +334,289 @@ function MatchActionSheet({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [showReportReasons, setShowReportReasons] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [reportDetails, setReportDetails] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
   const igHandle = match.instagramHandle;
   const scHandle = match.snapchatHandle;
   const displayName = igHandle ? `@${igHandle}` : scHandle ? scHandle : t("history.someoneNearby");
   const avatar = getAvatarForToken(match.matchedUserId);
+  const safeName = displayName !== t("history.someoneNearby") ? displayName : undefined;
 
-  const handleRemove = () => {
-    onClose();
-    Alert.alert(
-      t("history.removeMatch"),
-      t("history.removeConfirm", { name: displayName }),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("common.remove"),
-          style: "destructive",
-          onPress: async () => {
-            const success = await removeMatchFromServer(match.matchId);
-            if (!success) {
-              Alert.alert(t("common.error"), t("history.removeError"));
-            }
-          },
-        },
-      ],
-    );
+  const handleBlock = () => {
+    setShowBlockConfirm(true);
   };
 
-  const handleReport = () => {
+  const confirmBlock = async () => {
+    setBlocking(true);
+    const success = await blockUser({
+      blockedId: match.matchedUserId,
+      displayName: safeName,
+      matchId: match.matchId,
+    });
+    setBlocking(false);
+    setShowBlockConfirm(false);
     onClose();
-    Linking.openURL(
-      `mailto:support@wave-app.com?subject=Report%20User&body=Match%20ID:%20${match.matchId}%0APlease%20describe%20the%20issue:%0A`,
-    );
+    if (!success) {
+      Alert.alert(t("common.error"), t("history.blockError"));
+    }
   };
+
+  const handleSubmitReport = async () => {
+    if (!selectedReason) return;
+    setSubmittingReport(true);
+    const success = await blockUser({
+      blockedId: match.matchedUserId,
+      displayName: safeName,
+      matchId: match.matchId,
+      reason: selectedReason,
+      details: reportDetails.trim() || undefined,
+    });
+    setSubmittingReport(false);
+    setShowReportReasons(false);
+    setSelectedReason(null);
+    setReportDetails("");
+    onClose();
+    if (success) {
+      Alert.alert("", t("history.reportConfirm"));
+    } else {
+      Alert.alert(t("common.error"), t("history.reportError"));
+    }
+  };
+
+  const REPORT_REASONS = [
+    { key: "harassment", label: t("history.reportReasonHarassment"), icon: "alert-circle-outline" as const },
+    { key: "inappropriate", label: t("history.reportReasonInappropriate"), icon: "eye-off-outline" as const },
+    { key: "spam", label: t("history.reportReasonSpam"), icon: "bug-outline" as const },
+    { key: "other", label: t("history.reportReasonOther"), icon: "ellipsis-horizontal-outline" as const },
+  ];
 
   return (
-    <BottomSheet visible onClose={onClose}>
-      {/* Match info */}
-      <View className="items-center mb-5">
-        <View className={`w-14 h-14 rounded-full items-center justify-center mb-3 ${avatar.bg} border-2 ${avatar.ring}`}>
-          <Text className="text-2xl">{avatar.emoji}</Text>
-        </View>
-        <Text className="text-white text-lg font-semibold">{displayName}</Text>
-      </View>
+    <BottomSheet visible onClose={() => { setShowReportReasons(false); setShowBlockConfirm(false); setShowRemoveConfirm(false); onClose(); }}>
+      {showRemoveConfirm ? (
+        <>
+          {/* Remove match confirmation */}
+          <View className="items-center mb-5">
+            <Ionicons name="trash" size={32} color={COLORS.danger} style={{ marginBottom: 12 }} />
+            <Text className="text-white text-lg font-semibold">
+              {t("history.removeMatch")}
+            </Text>
+            <Text className="text-wave-muted text-sm mt-2 text-center px-4">
+              {t("history.removeConfirm", { name: displayName })}
+            </Text>
+          </View>
 
-      {/* Contact options */}
-      <View style={{ gap: 8 }}>
-        {igHandle && (
-          <SocialActionRow
-            platform="instagram"
-            handle={igHandle}
-            onPress={() => { onClose(); openInstagramProfile(igHandle); }}
-          />
-        )}
-        {scHandle && (
-          <SocialActionRow
-            platform="snapchat"
-            handle={scHandle}
-            onPress={() => { onClose(); openSnapchatProfile(scHandle); }}
-          />
-        )}
-      </View>
+          <TouchableOpacity
+            onPress={async () => {
+              setRemoving(true);
+              const success = await removeMatchFromServer(match.matchId);
+              setRemoving(false);
+              setShowRemoveConfirm(false);
+              onClose();
+              if (!success) {
+                Alert.alert(t("common.error"), t("history.removeError"));
+              }
+            }}
+            disabled={removing}
+            className="w-full bg-wave-danger rounded-2xl py-4 items-center justify-center mb-2"
+            activeOpacity={0.8}
+          >
+            {removing ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Text className="text-white text-sm font-semibold">{t("common.remove")}</Text>
+            )}
+          </TouchableOpacity>
 
-      {/* Divider */}
-      <View className="h-px bg-wave-muted/20 my-3" />
+          <TouchableOpacity
+            onPress={() => setShowRemoveConfirm(false)}
+            className="items-center py-2"
+            activeOpacity={0.7}
+          >
+            <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+          </TouchableOpacity>
+        </>
+      ) : showBlockConfirm ? (
+        <>
+          {/* Block confirmation */}
+          <View className="items-center mb-5">
+            <Ionicons name="ban" size={32} color={COLORS.danger} style={{ marginBottom: 12 }} />
+            <Text className="text-white text-lg font-semibold">
+              {t("history.blockUser")}
+            </Text>
+            <Text className="text-wave-muted text-sm mt-2 text-center px-4">
+              {t("history.blockConfirm", { name: displayName })}
+            </Text>
+          </View>
 
-      {/* Remove */}
-      <TouchableOpacity
-        onPress={handleRemove}
-        className="bg-wave-bg rounded-xl py-3.5 px-4 mb-2 flex-row items-center"
-        activeOpacity={0.7}
-        accessibilityLabel={t("history.removeMatch")}
-        accessibilityRole="button"
-      >
-        <Ionicons name="trash-outline" size={20} color={COLORS.danger} style={{ marginRight: 12 }} />
-        <Text className="text-wave-danger text-sm font-semibold">{t("history.removeMatch")}</Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            onPress={confirmBlock}
+            disabled={blocking}
+            className="w-full bg-wave-danger rounded-2xl py-4 items-center justify-center mb-2"
+            activeOpacity={0.8}
+          >
+            {blocking ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Text className="text-white text-sm font-semibold">{t("history.blockAndRemove")}</Text>
+            )}
+          </TouchableOpacity>
 
-      {/* Report */}
-      <TouchableOpacity
-        onPress={handleReport}
-        className="bg-wave-bg rounded-xl py-3.5 px-4 mb-2 flex-row items-center"
-        activeOpacity={0.7}
-        accessibilityLabel={t("history.reportUser")}
-        accessibilityRole="button"
-      >
-        <Ionicons name="flag-outline" size={20} color={COLORS.text} style={{ marginRight: 12 }} />
-        <Text className="text-wave-text text-sm font-semibold">{t("history.reportUser")}</Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowBlockConfirm(false)}
+            className="items-center py-2"
+            activeOpacity={0.7}
+          >
+            <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+          </TouchableOpacity>
+        </>
+      ) : showReportReasons ? (
+        <>
+          {/* Report reason picker */}
+          <View className="items-center mb-5">
+            <Ionicons name="flag" size={32} color={COLORS.danger} style={{ marginBottom: 12 }} />
+            <Text className="text-white text-lg font-semibold">
+              {t("history.reportTitle", { name: displayName })}
+            </Text>
+            <Text className="text-wave-muted text-sm mt-2 text-center">
+              {t("history.reportReasonPrompt")}
+            </Text>
+          </View>
+
+          {/* Reason selection (single choice) */}
+          <View style={{ gap: 6 }} className="mb-4">
+            {REPORT_REASONS.map((reason) => {
+              const isSelected = selectedReason === reason.key;
+              return (
+                <TouchableOpacity
+                  key={reason.key}
+                  onPress={() => setSelectedReason(reason.key)}
+                  className={`rounded-xl py-3 px-4 flex-row items-center border ${
+                    isSelected ? "bg-wave-primary/15 border-wave-primary/30" : "bg-wave-bg border-transparent"
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={reason.icon} size={20} color={isSelected ? COLORS.primary : COLORS.text} style={{ marginRight: 12 }} />
+                  <Text className={`text-sm font-semibold flex-1 ${isSelected ? "text-white" : "text-wave-muted"}`}>{reason.label}</Text>
+                  {isSelected && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Optional details */}
+          {selectedReason && (
+            <View className="bg-wave-bg rounded-xl px-4 mb-4" style={{ height: 80 }}>
+              <TextInput
+                value={reportDetails}
+                onChangeText={setReportDetails}
+                placeholder={t("history.reportDetailsPlaceholder")}
+                placeholderTextColor={COLORS.placeholder}
+                multiline
+                className="flex-1 text-white text-sm"
+                style={{ paddingVertical: 12, textAlignVertical: "top" }}
+                maxLength={500}
+              />
+            </View>
+          )}
+
+          {/* Submit */}
+          <TouchableOpacity
+            onPress={handleSubmitReport}
+            disabled={!selectedReason || submittingReport}
+            className={`w-full rounded-2xl py-4 items-center justify-center mb-2 ${selectedReason ? "bg-wave-danger" : "bg-wave-danger/30"}`}
+            activeOpacity={0.8}
+          >
+            {submittingReport ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Text className={`text-sm font-semibold ${selectedReason ? "text-white" : "text-wave-muted"}`}>
+                {t("history.submitReport")}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => { setShowReportReasons(false); setSelectedReason(null); setReportDetails(""); }}
+            className="items-center py-2"
+            activeOpacity={0.7}
+          >
+            <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          {/* Match info */}
+          <View className="items-center mb-5">
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-3 ${avatar.bg} border-2 ${avatar.ring}`}>
+              <Text className="text-2xl">{avatar.emoji}</Text>
+            </View>
+            <Text className="text-white text-lg font-semibold">{displayName}</Text>
+          </View>
+
+          {/* Contact options */}
+          <View style={{ gap: 8 }}>
+            {igHandle && (
+              <SocialActionRow
+                platform="instagram"
+                handle={igHandle}
+                onPress={() => { onClose(); openInstagramProfile(igHandle); }}
+              />
+            )}
+            {scHandle && (
+              <SocialActionRow
+                platform="snapchat"
+                handle={scHandle}
+                onPress={() => { onClose(); openSnapchatProfile(scHandle); }}
+              />
+            )}
+          </View>
+
+          {/* Divider */}
+          <View className="h-px bg-wave-muted/20 my-3" />
+
+          {/* Remove Match */}
+          <TouchableOpacity
+            onPress={() => setShowRemoveConfirm(true)}
+            className="bg-wave-bg rounded-xl py-3.5 px-4 mb-2 flex-row items-center"
+            activeOpacity={0.7}
+            accessibilityLabel={t("history.removeMatch")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="trash-outline" size={20} color={COLORS.text} style={{ marginRight: 12 }} />
+            <Text className="text-wave-text text-sm font-semibold">{t("history.removeMatch")}</Text>
+          </TouchableOpacity>
+
+          {/* Block */}
+          <TouchableOpacity
+            onPress={handleBlock}
+            className="bg-wave-bg rounded-xl py-3.5 px-4 mb-2 flex-row items-center"
+            activeOpacity={0.7}
+            accessibilityLabel={t("history.blockUser")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="ban-outline" size={20} color={COLORS.danger} style={{ marginRight: 12 }} />
+            <Text className="text-wave-danger text-sm font-semibold">{t("history.blockUser")}</Text>
+          </TouchableOpacity>
+
+          {/* Report & Block */}
+          <TouchableOpacity
+            onPress={() => setShowReportReasons(true)}
+            className="bg-wave-bg rounded-xl py-3.5 px-4 mb-2 flex-row items-center"
+            activeOpacity={0.7}
+            accessibilityLabel={t("history.reportUser")}
+            accessibilityRole="button"
+          >
+            <Ionicons name="flag-outline" size={20} color={COLORS.danger} style={{ marginRight: 12 }} />
+            <Text className="text-wave-danger text-sm font-semibold">{t("history.reportUser")}</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </BottomSheet>
   );
 }

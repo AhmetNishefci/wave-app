@@ -98,8 +98,6 @@ export async function updateLocationOnServer(
       return null;
     }
 
-    // Let supabase.functions.invoke handle auth automatically —
-    // it sends the current session JWT from the client's internal state.
     const { data, error } = await supabase.functions.invoke(
       "update-location",
       { body: { latitude, longitude } },

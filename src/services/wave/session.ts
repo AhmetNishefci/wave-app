@@ -9,26 +9,24 @@ import { logger } from "@/utils/logger";
  * treat this as "unauthenticated" and the app will redirect to login.
  */
 export async function getFreshSession(): Promise<Session | null> {
-  // Verify the JWT with the server — this triggers auto-refresh if needed
-  const { error: userError } = await supabase.auth.getUser();
+  // Read the current session from the Supabase client's internal state.
+  // autoRefreshToken is enabled, so the client keeps the token fresh automatically.
+  // We only call getSession() (not refreshSession()) to avoid triggering
+  // extra auth state change events that cause token churn on startup.
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (userError) {
-    logger.error("Session verification failed, attempting refresh", userError);
-    const { data: refreshed, error: refreshErr } =
-      await supabase.auth.refreshSession();
-
-    if (refreshErr || !refreshed.session) {
-      logger.error("Session refresh failed — user must re-authenticate", refreshErr);
-      return null;
-    }
-
-    return refreshed.session;
+  if (session) {
+    return session;
   }
 
-  // Token is valid — read the (now-verified) session from cache
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // No cached session — try an explicit refresh (e.g. after app was idle for a long time)
+  logger.wave("No cached session, attempting refresh");
+  const { data: refreshed, error } = await supabase.auth.refreshSession();
 
-  return session;
+  if (error || !refreshed.session) {
+    logger.error("Session refresh failed — user must re-authenticate", error);
+    return null;
+  }
+
+  return refreshed.session;
 }

@@ -218,7 +218,7 @@ export default function HistoryScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#6c63ff"
+              tintColor={COLORS.primary}
             />
           }
           onEndReached={handleLoadMore}
@@ -226,7 +226,7 @@ export default function HistoryScreen() {
           ListFooterComponent={
             loadingMore ? (
               <View className="py-4 items-center">
-                <ActivityIndicator size="small" color="#666680" />
+                <ActivityIndicator size="small" color={COLORS.muted} />
               </View>
             ) : null
           }
@@ -314,8 +314,8 @@ function MatchRow({
       {/* Platform indicators or unseen dot */}
       {hasHandle ? (
         <View className="flex-row items-center" style={{ gap: 6 }}>
-          {igHandle && <Ionicons name="logo-instagram" size={16} color="#6c63ff" />}
-          {scHandle && <Ionicons name="logo-snapchat" size={16} color="#FFFC00" />}
+          {igHandle && <Ionicons name="logo-instagram" size={16} color={COLORS.primary} />}
+          {scHandle && <Ionicons name="logo-snapchat" size={16} color={COLORS.snapchat} />}
         </View>
       ) : !match.seen ? (
         <View className="w-3 h-3 rounded-full bg-wave-match" />

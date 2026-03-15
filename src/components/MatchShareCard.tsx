@@ -105,7 +105,7 @@ export function MatchShareCard() {
             {/* Title */}
             <Text
               style={{
-                color: "#ffffff",
+                color: COLORS.white,
                 fontSize: 80,
                 fontWeight: "800",
                 textAlign: "center",

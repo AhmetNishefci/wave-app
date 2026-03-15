@@ -8,6 +8,7 @@ import { saveNote } from "@/services/profile";
 import { useAuthStore } from "@/stores/authStore";
 import { impactMedium } from "@/utils/haptics";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { COLORS } from "@/constants/colors";
 
 const MAX_NOTE_LENGTH = 40;
 
@@ -72,7 +73,7 @@ export default function NoteScreen() {
         <OnboardingProgress step={4} />
 
         <View className="w-12 h-12 rounded-full bg-wave-surface items-center justify-center mb-6">
-          <Ionicons name="pencil-outline" size={24} color="#6c63ff" />
+          <Ionicons name="pencil-outline" size={24} color={COLORS.primary} />
         </View>
 
         <Text className="text-2xl font-bold text-white mb-2">
@@ -87,7 +88,7 @@ export default function NoteScreen() {
             value={note}
             onChangeText={setNote}
             placeholder={t("note.placeholder")}
-            placeholderTextColor="#555"
+            placeholderTextColor={COLORS.placeholder}
             autoCapitalize="sentences"
             autoCorrect={false}
             className="flex-1 text-white text-base"
@@ -113,7 +114,7 @@ export default function NoteScreen() {
           activeOpacity={0.8}
         >
           {saving ? (
-            <ActivityIndicator color="white" size="small" />
+            <ActivityIndicator color={COLORS.white} size="small" />
           ) : (
             <Text className={`text-base font-semibold ${note.trim() ? "text-white" : "text-wave-muted"}`}>
               {note.trim() ? t("common.continue") : t("note.skipForNow")}

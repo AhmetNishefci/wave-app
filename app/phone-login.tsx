@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { sendPhoneOtp, verifyPhoneOtp } from "@/services/auth";
+import { fetchAndRoute } from "@/utils/routeFromProfile";
 import { impactMedium, impactLight } from "@/utils/haptics";
 import { COLORS } from "@/constants/colors";
 import { COUNTRIES, getCountryByCode, type Country } from "@/constants/countries";
@@ -98,14 +99,20 @@ export default function PhoneLoginScreen() {
 
     const { success, error } = await verifyPhoneOtp(fullPhone, otpCode);
 
-    setVerifying(false);
-    verifyingRef.current = false;
-
     if (success) {
-      router.replace("/");
-    } else if (error) {
-      Alert.alert(t("phoneLogin.verificationFailed"), error);
-      setOtpCode("");
+      // Fetch profile and navigate directly — avoids flashing the splash screen.
+      const routed = await fetchAndRoute(router);
+      if (!routed) {
+        router.replace("/");
+      }
+      return;
+    } else {
+      setVerifying(false);
+      verifyingRef.current = false;
+      if (error) {
+        Alert.alert(t("phoneLogin.verificationFailed"), error);
+        setOtpCode("");
+      }
     }
   };
 

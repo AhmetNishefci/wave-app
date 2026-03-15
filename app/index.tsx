@@ -3,11 +3,10 @@ import { View, Text, Image, ActivityIndicator, TouchableOpacity } from "react-na
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
-import { fetchProfile, syncTimezoneAndActivity } from "@/services/profile";
-import { fetchMatchesFromServer } from "@/services/wave/matches";
+import { fetchAndRoute } from "@/utils/routeFromProfile";
 import { logger } from "@/utils/logger";
-import { isAtLeastAge } from "@/utils/age";
 import { impactMedium } from "@/utils/haptics";
+import { COLORS } from "@/constants/colors";
 
 const waveHand = require("../assets/wave-hand.png");
 
@@ -27,85 +26,17 @@ export default function IndexScreen() {
   // Ref to hold pending timeout IDs for cleanup (C2 fix)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /**
-   * Shared routing logic: hydrates auth store from profile and navigates
-   * to the appropriate screen based on onboarding completeness.
-   */
-  const routeFromProfile = useCallback(
-    (profile: NonNullable<Awaited<ReturnType<typeof fetchProfile>>>) => {
-      const { setDateOfBirth, setGender, setGenderPreference, setAgePreference, setInstagramHandle, setSnapchatHandle, setNote, setNearbyAlertsEnabled, setDailyPushesEnabled } =
-        useAuthStore.getState();
-
-      // Age check — must happen before all other onboarding steps
-      if (!profile.dateOfBirth) {
-        logger.auth("No DOB, redirecting to birthday");
-        router.replace("/birthday");
-        return;
-      }
-
-      // Check if user is under 18 based on stored DOB
-      if (!isAtLeastAge(new Date(profile.dateOfBirth + "T00:00:00"), 18)) {
-        logger.auth("User under 18, redirecting to age-blocked");
-        setDateOfBirth(profile.dateOfBirth);
-        router.replace("/age-blocked");
-        return;
-      }
-
-      setDateOfBirth(profile.dateOfBirth);
-
-      if (!profile.gender) {
-        logger.auth("No gender, redirecting to gender");
-        router.replace("/gender");
-        return;
-      }
-
-      setGender(profile.gender);
-      setGenderPreference(profile.genderPreference);
-      setAgePreference(profile.agePreferenceMin, profile.agePreferenceMax);
-
-      if (!profile.instagramHandle && !profile.snapchatHandle) {
-        logger.auth("No contact handles, redirecting to onboarding");
-        router.replace("/onboarding");
-        return;
-      }
-
-      setInstagramHandle(profile.instagramHandle);
-      setSnapchatHandle(profile.snapchatHandle);
-      setNote(profile.note);
-      setNearbyAlertsEnabled(profile.nearbyAlertsEnabled);
-      setDailyPushesEnabled(profile.dailyPushesEnabled);
-
-      if (!profile.nearbyAlertsOnboarded) {
-        logger.auth("Nearby alerts not configured, redirecting");
-        router.replace("/nearby-alerts");
-        return;
-      }
-
-      // Background syncs (non-blocking)
-      syncTimezoneAndActivity().catch((err) =>
-        logger.error("Timezone/activity sync failed", err),
-      );
-      fetchMatchesFromServer().catch((err) =>
-        logger.error("Background match fetch failed", err),
-      );
-
-      logger.auth("Session valid, navigating to radar");
-      router.replace("/(main)/radar");
-    },
-    [router],
-  );
-
-  const navigateWithProfile = useCallback(
+  const navigateWithRetry = useCallback(
     async (generation: number, retryCount: number) => {
       // Bail out if a newer effect run has started (C3 fix)
       if (generation !== generationRef.current) return;
 
-      const profile = await fetchProfile();
+      const success = await fetchAndRoute(router);
 
       // Check again after async gap
       if (generation !== generationRef.current) return;
 
-      if (!profile) {
+      if (!success) {
         if (retryCount < MAX_PROFILE_RETRIES) {
           const nextRetry = retryCount + 1;
           const delay = 2000 * nextRetry;
@@ -113,19 +44,16 @@ export default function IndexScreen() {
             `Failed to fetch profile, retry ${nextRetry}/${MAX_PROFILE_RETRIES} in ${delay}ms`,
           );
           timerRef.current = setTimeout(
-            () => navigateWithProfile(generation, nextRetry),
+            () => navigateWithRetry(generation, nextRetry),
             delay,
           );
         } else {
           logger.error("All profile fetch retries exhausted");
           setFetchFailed(true);
         }
-        return;
       }
-
-      routeFromProfile(profile);
     },
-    [routeFromProfile],
+    [router],
   );
 
   useEffect(() => {
@@ -143,7 +71,7 @@ export default function IndexScreen() {
       return;
     }
 
-    navigateWithProfile(generation, 0);
+    navigateWithRetry(generation, 0);
 
     // Cleanup: clear any pending timer on unmount or dep change (C2 fix)
     return () => {
@@ -152,7 +80,7 @@ export default function IndexScreen() {
         timerRef.current = null;
       }
     };
-  }, [isAuthenticated, isLoading, router, navigateWithProfile]);
+  }, [isAuthenticated, isLoading, router, navigateWithRetry]);
 
   // Retry handler with guard against concurrent taps (H3 fix)
   const handleRetry = useCallback(async () => {
@@ -161,23 +89,19 @@ export default function IndexScreen() {
     setIsNavigating(true);
     setFetchFailed(false);
 
-    const profile = await fetchProfile();
-
-    // Bail if auth state changed during fetch (L4 fix) — the main
-    // effect will handle navigation when isAuthenticated updates.
+    // Bail if auth state changed during fetch (L4 fix)
     if (!useAuthStore.getState().isAuthenticated) {
       setIsNavigating(false);
       return;
     }
 
-    if (!profile) {
+    const success = await fetchAndRoute(router);
+
+    if (!success) {
       setFetchFailed(true);
       setIsNavigating(false);
-      return;
     }
-
-    routeFromProfile(profile);
-  }, [isNavigating, routeFromProfile]);
+  }, [isNavigating, router]);
 
   return (
     <View className="flex-1 items-center justify-center bg-wave-bg">
@@ -205,7 +129,7 @@ export default function IndexScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ActivityIndicator size="small" color="#6c63ff" />
+        <ActivityIndicator size="small" color={COLORS.primary} />
       )}
     </View>
   );

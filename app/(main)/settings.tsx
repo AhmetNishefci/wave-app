@@ -62,8 +62,15 @@ export default function SettingsScreen() {
   const [supportCategory, setSupportCategory] = useState<string | null>(null);
   const [supportDetails, setSupportDetails] = useState("");
   const [submittingTicket, setSubmittingTicket] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<ToastVariant>("success");
   const langCode = i18n.language?.substring(0, 2) ?? "en";
   const currentLang = LANGUAGES.find((l) => l.code === langCode) ?? LANGUAGES[0];
+
+  const showToast = useCallback((msg: string, variant: ToastVariant = "success") => {
+    setToastVariant(variant);
+    setToastMessage(msg);
+  }, []);
 
   // Load blocked users when the sheet opens
   const openBlockedUsers = useCallback(() => {
@@ -74,8 +81,11 @@ export default function SettingsScreen() {
     getBlockedUsers().then((users) => {
       setBlockedUsers(users.length > 0 || !__DEV__ ? users : getFakeBlockedUsers());
       setLoadingBlocked(false);
+    }).catch(() => {
+      setLoadingBlocked(false);
+      showToast(t("settings.genericError"), "error");
     });
-  }, []);
+  }, [showToast, t]);
 
   const handleUnblock = (blockedId: string, displayName: string | null) => {
     setUnblockTarget({ blockedId, displayName });
@@ -130,6 +140,8 @@ export default function SettingsScreen() {
     resetToDeviceLanguage().then(() => {
       const deviceLang = i18n.language;
       syncLocaleToServer(deviceLang);
+    }).catch(() => {
+      showToast(t("settings.genericError"), "error");
     });
     setShowLanguagePicker(false);
   };
@@ -147,19 +159,11 @@ export default function SettingsScreen() {
   const [savingNote, setSavingNote] = useState(false);
   const [savingAlerts, setSavingAlerts] = useState(false);
   const [savingDailyPushes, setSavingDailyPushes] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<ToastVariant>("success");
-
   // Clean up debounce timer on unmount to avoid state updates on unmounted component
   useEffect(() => {
     return () => {
       if (ageSaveTimer.current) clearTimeout(ageSaveTimer.current);
     };
-  }, []);
-
-  const showToast = useCallback((msg: string, variant: ToastVariant = "success") => {
-    setToastVariant(variant);
-    setToastMessage(msg);
   }, []);
 
   const handleSaveHandle = async () => {
@@ -370,7 +374,7 @@ export default function SettingsScreen() {
       {/* Full-screen blocking overlay while deleting */}
       <Modal visible={deleting} transparent animationType="fade">
         <View className="flex-1 bg-black/80 items-center justify-center">
-          <ActivityIndicator size="large" color="#6c63ff" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text className="text-white text-base mt-4">{t("settings.deletingAccount")}</Text>
         </View>
       </Modal>
@@ -452,14 +456,14 @@ export default function SettingsScreen() {
                   {t(option.labelKey)}
                 </Text>
                 {selected && (
-                  <Ionicons name="checkmark-circle" size={20} color="#6c63ff" />
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
                 )}
               </TouchableOpacity>
             );
           })}
         </View>
         {savingPreference && (
-          <ActivityIndicator size="small" color="#6c63ff" style={{ marginTop: 8 }} />
+          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 8 }} />
         )}
 
         {/* Age Range */}
@@ -471,7 +475,7 @@ export default function SettingsScreen() {
             onChangeEnd={handleAgePreferenceChange}
           />
           {savingAgePref && (
-            <ActivityIndicator size="small" color="#6c63ff" style={{ marginTop: 8 }} />
+            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 8 }} />
           )}
         </View>
 
@@ -493,12 +497,12 @@ export default function SettingsScreen() {
             value={nearbyAlertsEnabled}
             onValueChange={handleToggleAlerts}
             disabled={savingAlerts}
-            trackColor={{ false: "#333", true: "#6c63ff" }}
+            trackColor={{ false: COLORS.switchOff, true: COLORS.primary }}
             thumbColor="white"
           />
         </View>
         {savingAlerts && (
-          <ActivityIndicator size="small" color="#6c63ff" style={{ marginTop: 8 }} />
+          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 8 }} />
         )}
         <Text className="text-wave-muted text-xs mt-3 leading-4">
           {t("settings.nearbyAlertsHint")}
@@ -518,12 +522,12 @@ export default function SettingsScreen() {
             value={dailyPushesEnabled}
             onValueChange={handleToggleDailyPushes}
             disabled={savingDailyPushes}
-            trackColor={{ false: "#333", true: "#6c63ff" }}
+            trackColor={{ false: COLORS.switchOff, true: COLORS.primary }}
             thumbColor="white"
           />
         </View>
         {savingDailyPushes && (
-          <ActivityIndicator size="small" color="#6c63ff" style={{ marginTop: 8 }} />
+          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 8 }} />
         )}
         <Text className="text-wave-muted text-xs mt-3 leading-4">
           {t("settings.eveningRemindersHint")}
@@ -536,7 +540,7 @@ export default function SettingsScreen() {
         {editingHandle ? (
           <View className="mb-3">
             <View className="flex-row items-center mb-2">
-              <Ionicons name="logo-instagram" size={14} color="#6c63ff" />
+              <Ionicons name="logo-instagram" size={14} color={COLORS.primary} />
               <Text className="text-wave-muted text-xs ml-1.5">{t("onboarding.instagram")}</Text>
             </View>
             <View className="bg-wave-bg rounded-xl flex-row items-center px-3" style={{ height: 44 }}>
@@ -545,7 +549,7 @@ export default function SettingsScreen() {
                 value={handleInput}
                 onChangeText={setHandleInput}
                 placeholder={t("common.username")}
-                placeholderTextColor="#555"
+                placeholderTextColor={COLORS.placeholder}
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="off"
@@ -584,14 +588,14 @@ export default function SettingsScreen() {
           <TouchableOpacity onPress={() => setEditingHandle(true)} activeOpacity={0.7} className="mb-3">
             <View className="flex-row justify-between items-center py-1.5">
               <View className="flex-row items-center">
-                <Ionicons name="logo-instagram" size={16} color="#6c63ff" style={{ marginRight: 8 }} />
+                <Ionicons name="logo-instagram" size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
                 <Text className="text-wave-muted text-sm">{t("onboarding.instagram")}</Text>
               </View>
               <View className="flex-row items-center">
                 <Text className="text-white text-sm font-mono mr-2">
                   {instagramHandle ? `@${instagramHandle}` : t("common.notSet")}
                 </Text>
-                <Ionicons name="pencil" size={14} color="#6c63ff" />
+                <Ionicons name="pencil" size={14} color={COLORS.primary} />
               </View>
             </View>
           </TouchableOpacity>
@@ -604,7 +608,7 @@ export default function SettingsScreen() {
         {editingSnapchat ? (
           <View>
             <View className="flex-row items-center mb-2">
-              <Ionicons name="logo-snapchat" size={14} color="#FFFC00" />
+              <Ionicons name="logo-snapchat" size={14} color={COLORS.snapchat} />
               <Text className="text-wave-muted text-xs ml-1.5">{t("onboarding.snapchat")}</Text>
             </View>
             <View className="bg-wave-bg rounded-xl flex-row items-center px-3" style={{ height: 44 }}>
@@ -612,7 +616,7 @@ export default function SettingsScreen() {
                 value={snapchatInput}
                 onChangeText={setSnapchatInput}
                 placeholder={t("common.username")}
-                placeholderTextColor="#555"
+                placeholderTextColor={COLORS.placeholder}
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="off"
@@ -651,14 +655,14 @@ export default function SettingsScreen() {
           <TouchableOpacity onPress={() => setEditingSnapchat(true)} activeOpacity={0.7}>
             <View className="flex-row justify-between items-center py-1.5">
               <View className="flex-row items-center">
-                <Ionicons name="logo-snapchat" size={16} color="#FFFC00" style={{ marginRight: 8 }} />
+                <Ionicons name="logo-snapchat" size={16} color={COLORS.snapchat} style={{ marginRight: 8 }} />
                 <Text className="text-wave-muted text-sm">{t("onboarding.snapchat")}</Text>
               </View>
               <View className="flex-row items-center">
                 <Text className="text-white text-sm font-mono mr-2">
                   {snapchatHandle || t("common.notSet")}
                 </Text>
-                <Ionicons name="pencil" size={14} color="#6c63ff" />
+                <Ionicons name="pencil" size={14} color={COLORS.primary} />
               </View>
             </View>
           </TouchableOpacity>
@@ -678,7 +682,7 @@ export default function SettingsScreen() {
                 value={noteInput}
                 onChangeText={setNoteInput}
                 placeholder={t("settings.notePlaceholder")}
-                placeholderTextColor="#555"
+                placeholderTextColor={COLORS.placeholder}
                 autoCapitalize="sentences"
                 autoCorrect={false}
                 className="flex-1 text-white text-sm"
@@ -690,7 +694,7 @@ export default function SettingsScreen() {
               />
               {noteInput.length > 0 && (
                 <TouchableOpacity onPress={() => setNoteInput("")} className="pl-2">
-                  <Ionicons name="close-circle" size={18} color="#888" />
+                  <Ionicons name="close-circle" size={18} color={COLORS.muted} />
                 </TouchableOpacity>
               )}
             </View>
@@ -728,7 +732,7 @@ export default function SettingsScreen() {
                 <Text className="text-white text-sm mr-2" numberOfLines={1} style={{ maxWidth: 180 }}>
                   {note || t("common.notSet")}
                 </Text>
-                <Ionicons name="pencil" size={14} color="#6c63ff" />
+                <Ionicons name="pencil" size={14} color={COLORS.primary} />
               </View>
             </View>
           </TouchableOpacity>
@@ -956,6 +960,8 @@ export default function SettingsScreen() {
                           setLoadingBlocked(true);
                           getBlockedUsers().then((users) => {
                             setBlockedUsers(users.length > 0 || !__DEV__ ? users : getFakeBlockedUsers());
+                            setLoadingBlocked(false);
+                          }).catch(() => {
                             setLoadingBlocked(false);
                           });
                         }}

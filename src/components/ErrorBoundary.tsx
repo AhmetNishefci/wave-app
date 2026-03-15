@@ -1,5 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { COLORS } from "@/constants/colors";
 
 interface Props {
   children: ReactNode;
@@ -39,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <View
           style={{
             flex: 1,
-            backgroundColor: "#0a0a0a",
+            backgroundColor: COLORS.bg,
             alignItems: "center",
             justifyContent: "center",
             paddingHorizontal: 32,
@@ -48,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text style={{ fontSize: 48, marginBottom: 16 }}>😵</Text>
           <Text
             style={{
-              color: "#fff",
+              color: COLORS.white,
               fontSize: 20,
               fontWeight: "bold",
               marginBottom: 8,
@@ -59,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </Text>
           <Text
             style={{
-              color: "#888",
+              color: COLORS.muted,
               fontSize: 14,
               textAlign: "center",
               marginBottom: 24,
@@ -72,13 +73,13 @@ export class ErrorBoundary extends Component<Props, State> {
           <TouchableOpacity
             onPress={this.handleReset}
             style={{
-              backgroundColor: "#6c63ff",
+              backgroundColor: COLORS.primary,
               paddingVertical: 14,
               paddingHorizontal: 32,
               borderRadius: 16,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
+            <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: "600" }}>
               Try Again
             </Text>
           </TouchableOpacity>

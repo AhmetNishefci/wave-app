@@ -9,6 +9,7 @@ import { saveInstagramHandle, saveSnapchatHandle } from "@/services/profile";
 import { useAuthStore } from "@/stores/authStore";
 import { impactMedium } from "@/utils/haptics";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { COLORS } from "@/constants/colors";
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
@@ -101,7 +102,7 @@ export default function OnboardingScreen() {
         <OnboardingProgress step={3} />
 
         <View className="w-12 h-12 rounded-full bg-wave-surface items-center justify-center mb-6">
-          <Ionicons name="chatbubbles-outline" size={24} color="#6c63ff" />
+          <Ionicons name="chatbubbles-outline" size={24} color={COLORS.primary} />
         </View>
 
         <Text className="text-2xl font-bold text-white mb-2">
@@ -114,7 +115,7 @@ export default function OnboardingScreen() {
         {/* Instagram input */}
         <View className="w-full mb-4">
           <View className="flex-row items-center mb-2">
-            <Ionicons name="logo-instagram" size={16} color="#6c63ff" />
+            <Ionicons name="logo-instagram" size={16} color={COLORS.primary} />
             <Text className="text-wave-muted text-xs ml-1.5">{t("onboarding.instagram")}</Text>
           </View>
           <View className="w-full bg-wave-surface rounded-2xl px-4 flex-row items-center" style={{ height: 52 }}>
@@ -123,7 +124,7 @@ export default function OnboardingScreen() {
               value={igHandle}
               onChangeText={setIgHandle}
               placeholder={t("common.username")}
-              placeholderTextColor="#555"
+              placeholderTextColor={COLORS.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="off"
@@ -138,7 +139,7 @@ export default function OnboardingScreen() {
         {/* Snapchat input */}
         <View className="w-full mb-6">
           <View className="flex-row items-center mb-2">
-            <Ionicons name="logo-snapchat" size={16} color="#FFFC00" />
+            <Ionicons name="logo-snapchat" size={16} color={COLORS.snapchat} />
             <Text className="text-wave-muted text-xs ml-1.5">{t("onboarding.snapchat")}</Text>
           </View>
           <View className="w-full bg-wave-surface rounded-2xl px-4 flex-row items-center" style={{ height: 52 }}>
@@ -147,7 +148,7 @@ export default function OnboardingScreen() {
               value={scHandle}
               onChangeText={setScHandle}
               placeholder={t("common.username")}
-              placeholderTextColor="#555"
+              placeholderTextColor={COLORS.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="off"
@@ -168,7 +169,7 @@ export default function OnboardingScreen() {
           activeOpacity={0.8}
         >
           {saving ? (
-            <ActivityIndicator color="white" size="small" />
+            <ActivityIndicator color={COLORS.white} size="small" />
           ) : (
             <Text className={`text-base font-semibold ${hasAnyInput ? "text-white" : "text-wave-muted"}`}>
               {t("common.continue")}

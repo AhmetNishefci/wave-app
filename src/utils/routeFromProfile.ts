@@ -1,0 +1,80 @@
+import type { Router } from "expo-router";
+import { useAuthStore } from "@/stores/authStore";
+import { fetchProfile, syncTimezoneAndActivity } from "@/services/profile";
+import { fetchMatchesFromServer } from "@/services/wave/matches";
+import { isAtLeastAge } from "@/utils/age";
+import { logger } from "@/utils/logger";
+
+/**
+ * Fetch the user's profile and navigate to the correct screen based on
+ * onboarding completeness. Used by both the splash screen (cold start)
+ * and login screens (post sign-in) to avoid duplicate routing logic.
+ *
+ * Returns false if the profile fetch failed (caller should handle retry).
+ */
+export async function fetchAndRoute(router: Router): Promise<boolean> {
+  const profile = await fetchProfile();
+  if (!profile) return false;
+
+  const {
+    setDateOfBirth, setGender, setGenderPreference, setAgePreference,
+    setInstagramHandle, setSnapchatHandle, setNote,
+    setNearbyAlertsEnabled, setDailyPushesEnabled,
+  } = useAuthStore.getState();
+
+  // Age check — must happen before all other onboarding steps
+  if (!profile.dateOfBirth) {
+    logger.auth("No DOB, redirecting to birthday");
+    router.replace("/birthday");
+    return true;
+  }
+
+  if (!isAtLeastAge(new Date(profile.dateOfBirth + "T00:00:00"), 18)) {
+    logger.auth("User under 18, redirecting to age-blocked");
+    setDateOfBirth(profile.dateOfBirth);
+    router.replace("/age-blocked");
+    return true;
+  }
+
+  setDateOfBirth(profile.dateOfBirth);
+
+  if (!profile.gender) {
+    logger.auth("No gender, redirecting to gender");
+    router.replace("/gender");
+    return true;
+  }
+
+  setGender(profile.gender);
+  setGenderPreference(profile.genderPreference);
+  setAgePreference(profile.agePreferenceMin, profile.agePreferenceMax);
+
+  if (!profile.instagramHandle && !profile.snapchatHandle) {
+    logger.auth("No contact handles, redirecting to onboarding");
+    router.replace("/onboarding");
+    return true;
+  }
+
+  setInstagramHandle(profile.instagramHandle);
+  setSnapchatHandle(profile.snapchatHandle);
+  setNote(profile.note);
+  setNearbyAlertsEnabled(profile.nearbyAlertsEnabled);
+  setDailyPushesEnabled(profile.dailyPushesEnabled);
+
+  if (!profile.nearbyAlertsOnboarded) {
+    logger.auth("Nearby alerts not configured, redirecting");
+    router.replace("/nearby-alerts");
+    return true;
+  }
+
+  // Background syncs (non-blocking)
+  syncTimezoneAndActivity().catch((err) =>
+    logger.error("Timezone/activity sync failed", err),
+  );
+  fetchMatchesFromServer().catch((err) =>
+    logger.error("Background match fetch failed", err),
+  );
+
+  logger.auth("Session valid, navigating to radar");
+  router.replace("/(main)/radar");
+  return true;
+}

@@ -9,6 +9,7 @@ import { saveNearbyAlertsPreference } from "@/services/profile";
 import { requestLocationPermission } from "@/services/location";
 import { impactMedium } from "@/utils/haptics";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { COLORS } from "@/constants/colors";
 
 export default function NearbyAlertsScreen() {
   const { t } = useTranslation();
@@ -103,7 +104,7 @@ export default function NearbyAlertsScreen() {
 
       {/* Icon */}
       <View className="w-16 h-16 rounded-full bg-wave-primary/20 items-center justify-center mb-6 border-2 border-wave-primary/40">
-        <Ionicons name="location-outline" size={32} color="#6c63ff" />
+        <Ionicons name="location-outline" size={32} color={COLORS.primary} />
       </View>
 
       <Text className="text-2xl font-bold text-white mb-2">
@@ -152,7 +153,7 @@ export default function NearbyAlertsScreen() {
         <Switch
           value={alertsEnabled}
           onValueChange={setAlertsEnabled}
-          trackColor={{ false: "#333", true: "#6c63ff" }}
+          trackColor={{ false: COLORS.switchOff, true: COLORS.primary }}
           thumbColor="white"
         />
       </View>
@@ -165,7 +166,7 @@ export default function NearbyAlertsScreen() {
         activeOpacity={0.8}
       >
         {saving ? (
-          <ActivityIndicator color="white" size="small" />
+          <ActivityIndicator color={COLORS.white} size="small" />
         ) : (
           <Text className="text-white text-base font-semibold">{t("common.continue")}</Text>
         )}

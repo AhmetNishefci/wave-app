@@ -10,6 +10,7 @@ import { useMatchListener } from "@/hooks/useMatchListener";
 import { useNotifications } from "@/hooks/useNotifications";
 import { logger } from "@/utils/logger";
 import { preloadSounds } from "@/utils/sound";
+import { COLORS } from "@/constants/colors";
 
 export default function MainLayout() {
   const router = useRouter();
@@ -75,15 +76,15 @@ export default function MainLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#0a0a0a",
-          borderTopColor: "#1a1a2e",
+          backgroundColor: COLORS.bg,
+          borderTopColor: COLORS.surface,
           borderTopWidth: 1,
           height: 85,
           paddingBottom: 30,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: "#6c63ff",
-        tabBarInactiveTintColor: "#666680",
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.muted,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
@@ -108,7 +109,7 @@ export default function MainLayout() {
           ),
           tabBarBadge: unseenCount > 0 ? unseenCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: "#ec4899",
+            backgroundColor: COLORS.match,
             fontSize: 10,
             minWidth: 18,
             height: 18,

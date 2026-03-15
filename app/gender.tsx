@@ -11,6 +11,7 @@ import { AgeRangeSlider } from "@/components/AgeRangeSlider";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { getAgeFromDob, getDefaultAgeRange } from "@/utils/age";
 import type { Gender, GenderPreference } from "@/types";
+import { COLORS } from "@/constants/colors";
 
 export default function GenderScreen() {
   const { t } = useTranslation();
@@ -105,7 +106,7 @@ export default function GenderScreen() {
 
       {/* Icon */}
       <View className="w-12 h-12 rounded-full bg-wave-surface items-center justify-center mb-6">
-        <Ionicons name="person-outline" size={24} color="#6c63ff" />
+        <Ionicons name="person-outline" size={24} color={COLORS.primary} />
       </View>
 
       <Text className="text-2xl font-bold text-white mb-2">{t("gender.title")}</Text>
@@ -137,7 +138,7 @@ export default function GenderScreen() {
               <Ionicons
                 name={option.icon as any}
                 size={28}
-                color={selected ? "#6c63ff" : "#666680"}
+                color={selected ? COLORS.primary : COLORS.muted}
               />
               <Text
                 className={`text-base font-semibold mt-2 ${
@@ -180,7 +181,7 @@ export default function GenderScreen() {
                 {option.label}
               </Text>
               {selected && (
-                <Ionicons name="checkmark-circle" size={22} color="#6c63ff" />
+                <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
               )}
             </TouchableOpacity>
           );
@@ -205,7 +206,7 @@ export default function GenderScreen() {
         activeOpacity={0.8}
       >
         {saving ? (
-          <ActivityIndicator color="white" size="small" />
+          <ActivityIndicator color={COLORS.white} size="small" />
         ) : (
           <Text
             className={`text-base font-semibold ${

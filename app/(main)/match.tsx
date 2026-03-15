@@ -211,20 +211,20 @@ export default function MatchScreen() {
         <View className="mb-6 items-center" style={{ gap: 8 }}>
           {igHandle && (
             <TouchableOpacity onPress={openInstagram} className="flex-row items-center">
-              <Ionicons name="logo-instagram" size={18} color="#6c63ff" style={{ marginRight: 6 }} />
+              <Ionicons name="logo-instagram" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
               <Text className="text-wave-accent text-lg font-semibold">@{igHandle}</Text>
             </TouchableOpacity>
           )}
           {scHandle && (
             <TouchableOpacity onPress={openSnapchat} className="flex-row items-center">
-              <Ionicons name="logo-snapchat" size={18} color="#FFFC00" style={{ marginRight: 6 }} />
+              <Ionicons name="logo-snapchat" size={18} color={COLORS.snapchat} style={{ marginRight: 6 }} />
               <Text className="text-wave-accent text-lg font-semibold">{scHandle}</Text>
             </TouchableOpacity>
           )}
         </View>
       ) : handleLoading ? (
         <View className="mb-6 flex-row items-center">
-          <ActivityIndicator size="small" color="#666680" />
+          <ActivityIndicator size="small" color={COLORS.muted} />
           <Text className="text-wave-muted text-sm ml-2">{t("match.loadingSocials")}</Text>
         </View>
       ) : (
@@ -259,7 +259,7 @@ export default function MatchScreen() {
               accessibilityLabel={t("match.openSnapchatLabel", { handle: scHandle })}
               accessibilityRole="button"
             >
-              <Ionicons name="logo-snapchat" size={20} color={igHandle ? "#FFFC00" : "black"} style={{ marginRight: 8 }} />
+              <Ionicons name="logo-snapchat" size={20} color={igHandle ? COLORS.snapchat : COLORS.black} style={{ marginRight: 8 }} />
               <Text className={`text-lg font-semibold ${igHandle ? "text-yellow-400" : "text-black"}`}>{t("match.openSnapchat")}</Text>
             </TouchableOpacity>
           )}
@@ -325,7 +325,7 @@ function IcebreakerPrompt({ matchId }: { matchId: string }) {
         <Ionicons
           name={copied ? "checkmark-circle" : "copy-outline"}
           size={14}
-          color={copied ? "#00d4aa" : COLORS.muted}
+          color={copied ? COLORS.accent : COLORS.muted}
           style={{ marginRight: 4 }}
         />
         <Text className={`text-xs font-semibold ${copied ? "text-wave-accent" : "text-wave-muted"}`}>

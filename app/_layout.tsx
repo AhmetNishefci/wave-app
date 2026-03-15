@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/services/supabase";
 import { logger } from "@/utils/logger";
+import { COLORS } from "@/constants/colors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function RootLayout() {
@@ -33,7 +34,7 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: "#0a0a0a" },
+            contentStyle: { backgroundColor: COLORS.bg },
             animation: "fade",
           }}
         >

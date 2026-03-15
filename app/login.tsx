@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { signInWithGoogle, signInWithApple } from "@/services/auth";
+import { fetchAndRoute } from "@/utils/routeFromProfile";
 import { COLORS } from "@/constants/colors";
 import { impactMedium } from "@/utils/haptics";
 
@@ -34,13 +35,21 @@ export default function LoginScreen() {
       ? await signInWithApple()
       : await signInWithGoogle();
 
-    setLoadingProvider(null);
-    signingInRef.current = false;
-
     if (success) {
-      router.replace("/");
-    } else if (error && error !== "cancelled") {
-      Alert.alert(t("common.signInFailed"), error);
+      // Fetch profile and navigate directly — avoids flashing the splash screen.
+      // Keep spinner on the button while this runs.
+      const routed = await fetchAndRoute(router);
+      if (!routed) {
+        // Profile fetch failed — fall back to splash screen which handles retries
+        router.replace("/");
+      }
+      return;
+    } else {
+      setLoadingProvider(null);
+      signingInRef.current = false;
+      if (error && error !== "cancelled") {
+        Alert.alert(t("common.signInFailed"), error);
+      }
     }
   };
 
@@ -57,7 +66,7 @@ export default function LoginScreen() {
               width: 120,
               height: 120,
               borderRadius: 60,
-              backgroundColor: "#6c63ff",
+              backgroundColor: COLORS.primary,
               opacity: 0.15,
             }}
           />
@@ -75,7 +84,7 @@ export default function LoginScreen() {
           {STEPS.map((step, i) => (
             <View key={i} className="flex-row items-center mb-5">
               <View className="w-10 h-10 rounded-full bg-wave-surface items-center justify-center mr-3">
-                <Ionicons name={step.icon} size={20} color="#6c63ff" />
+                <Ionicons name={step.icon} size={20} color={COLORS.primary} />
               </View>
               <Text className="text-white text-sm">{step.text}</Text>
             </View>

@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { impactMedium } from "@/utils/haptics";
 import { isAtLeastAge } from "@/utils/age";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { COLORS } from "@/constants/colors";
 
 export default function BirthdayScreen() {
   const { t } = useTranslation();
@@ -89,7 +90,7 @@ export default function BirthdayScreen() {
 
       {/* Icon */}
       <View className="w-12 h-12 rounded-full bg-wave-surface items-center justify-center mb-6">
-        <Ionicons name="calendar-outline" size={24} color="#6c63ff" />
+        <Ionicons name="calendar-outline" size={24} color={COLORS.primary} />
       </View>
 
       <Text className="text-2xl font-bold text-white mb-2">{t("birthday.title")}</Text>
@@ -130,7 +131,7 @@ export default function BirthdayScreen() {
         activeOpacity={0.8}
       >
         {saving ? (
-          <ActivityIndicator color="white" size="small" />
+          <ActivityIndicator color={COLORS.white} size="small" />
         ) : (
           <Text
             className={`text-base font-semibold ${

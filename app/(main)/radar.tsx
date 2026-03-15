@@ -554,7 +554,7 @@ export default function RadarScreen() {
         >
           {isStarting ? (
             <View className="flex-row items-center">
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color={COLORS.white} />
               <Text className="text-white text-lg font-semibold ml-2">
                 {currentToken ? t("radar.starting") : t("radar.connecting")}
               </Text>
@@ -588,7 +588,7 @@ export default function RadarScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#6c63ff"
+            tintColor={COLORS.primary}
             enabled={isDiscoveryActive}
           />
         }

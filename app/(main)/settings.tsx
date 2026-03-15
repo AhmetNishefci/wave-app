@@ -8,15 +8,28 @@ import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
 import { useAuthStore } from "@/stores/authStore";
 import { signOut } from "@/services/auth";
-import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference } from "@/services/profile";
+import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference, syncLocaleToServer } from "@/services/profile";
 import { requestLocationPermission, hasLocationPermission, isLocationBlocked } from "@/services/location";
 import { supabase } from "@/services/supabase";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { impactLight } from "@/utils/haptics";
 import { Toast, type ToastVariant } from "@/components/Toast";
 import { AgeRangeSlider } from "@/components/AgeRangeSlider";
+import { BottomSheet } from "@/components/BottomSheet";
+import { COLORS } from "@/constants/colors";
 import { getAgeFromDob } from "@/utils/age";
+import i18n, { changeAppLanguage, resetToDeviceLanguage } from "@/i18n";
 import type { GenderPreference } from "@/types";
+
+const LANGUAGES = [
+  { code: "en", name: "English", flag: "🇬🇧" },
+  { code: "de", name: "German", flag: "🇩🇪" },
+  { code: "fr", name: "French", flag: "🇫🇷" },
+  { code: "es", name: "Spanish", flag: "🇪🇸" },
+  { code: "it", name: "Italian", flag: "🇮🇹" },
+  { code: "pt", name: "Portuguese", flag: "🇵🇹" },
+  { code: "tr", name: "Turkish", flag: "🇹🇷" },
+];
 
 const PREFERENCE_OPTIONS: { value: GenderPreference; labelKey: string }[] = [
   { value: "male", labelKey: "gender.men" },
@@ -36,6 +49,25 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   const [deleting, setDeleting] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const langCode = i18n.language?.substring(0, 2) ?? "en";
+  const currentLang = LANGUAGES.find((l) => l.code === langCode) ?? LANGUAGES[0];
+
+  const handleChangeLanguage = (code: string) => {
+    impactLight();
+    changeAppLanguage(code);
+    syncLocaleToServer(code);
+    setShowLanguagePicker(false);
+  };
+
+  const handleResetLanguage = () => {
+    impactLight();
+    resetToDeviceLanguage().then(() => {
+      const deviceLang = i18n.language;
+      syncLocaleToServer(deviceLang);
+    });
+    setShowLanguagePicker(false);
+  };
   const [editingHandle, setEditingHandle] = useState(false);
   const [handleInput, setHandleInput] = useState(instagramHandle ?? "");
   const [savingHandle, setSavingHandle] = useState(false);
@@ -306,6 +338,22 @@ export default function SettingsScreen() {
             {t("settings.genderLocked")}
           </Text>
         )}
+      </Section>
+
+      {/* Language */}
+      <Section title={t("common.language")}>
+        <TouchableOpacity
+          onPress={() => setShowLanguagePicker(true)}
+          activeOpacity={0.7}
+        >
+          <View className="flex-row justify-between items-center py-1.5">
+            <View className="flex-row items-center">
+              <Text className="text-lg mr-2">{currentLang.flag}</Text>
+              <Text className="text-white text-sm">{currentLang.name}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
+          </View>
+        </TouchableOpacity>
       </Section>
 
       {/* Stats */}
@@ -725,6 +773,50 @@ export default function SettingsScreen() {
 
     {/* Toast */}
     <Toast message={toastMessage} variant={toastVariant} onDismiss={() => setToastMessage(null)} />
+
+    {/* Language picker */}
+    <BottomSheet visible={showLanguagePicker} onClose={() => setShowLanguagePicker(false)}>
+      <Text className="text-white text-lg font-semibold text-center mb-4">{t("common.language")}</Text>
+      <View style={{ gap: 4 }}>
+        {/* System Default option */}
+        <TouchableOpacity
+          onPress={handleResetLanguage}
+          className="flex-row items-center justify-between rounded-xl py-3 px-4 bg-wave-bg"
+          activeOpacity={0.7}
+        >
+          <View className="flex-row items-center">
+            <Text className="text-lg mr-3">📱</Text>
+            <Text className="text-wave-muted text-sm font-semibold">System Default</Text>
+          </View>
+        </TouchableOpacity>
+
+        <View className="h-px bg-wave-muted/20 my-1" />
+
+        {LANGUAGES.map((lang) => {
+          const isSelected = lang.code === langCode;
+          return (
+            <TouchableOpacity
+              key={lang.code}
+              onPress={() => handleChangeLanguage(lang.code)}
+              className={`flex-row items-center justify-between rounded-xl py-3 px-4 ${
+                isSelected ? "bg-wave-primary/15 border border-wave-primary/30" : "bg-wave-bg"
+              }`}
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center">
+                <Text className="text-lg mr-3">{lang.flag}</Text>
+                <Text className={`text-sm font-semibold ${isSelected ? "text-white" : "text-wave-muted"}`}>
+                  {lang.name}
+                </Text>
+              </View>
+              {isSelected && (
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </BottomSheet>
     </>
   );
 }

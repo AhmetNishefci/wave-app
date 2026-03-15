@@ -13,6 +13,21 @@ export function resetTimezoneSyncCache(): void {
   lastTimezoneSyncMs = 0;
 }
 
+/**
+ * Sync the user's locale to the server immediately.
+ * Called when the user manually changes language in Settings.
+ */
+export async function syncLocaleToServer(locale: string): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ locale }).eq("id", user.id);
+    logger.auth("Locale synced to server", { locale });
+  } catch (err) {
+    logger.error("Locale sync failed (non-fatal)", err);
+  }
+}
+
 export interface UserProfile {
   dateOfBirth: string | null;
   instagramHandle: string | null;

@@ -14,6 +14,7 @@
     "username": "usuario",
     "somethingWentWrong": "Algo salió mal",
     "openSettings": "Abrir Ajustes",
+    "language": "Idioma",
     "signInFailed": "Error al iniciar sesión",
     "couldntSave": "No se pudo guardar",
     "identityHidden": "Tu identidad permanece oculta hasta que haya un match mutuo."

@@ -20,48 +20,56 @@ const PUSH_STRINGS: Record<string, Record<string, string>> = {
     matchBody: "Someone waved back! Open Wave to see who.",
     waveTitle: "Someone waved at you! 👋",
     waveBody: "Open Wave to wave back",
+    waveBodyWithNote: "\"{{note}}\" waved at you — open Wave to wave back",
   },
   de: {
     matchTitle: "It's a Match! 🎉",
     matchBody: "Jemand hat zurückgewaved! Öffne Wave um zu sehen wer.",
     waveTitle: "Jemand hat dir zugewaved! 👋",
     waveBody: "Öffne Wave und wave zurück",
+    waveBodyWithNote: "\"{{note}}\" hat dir gewaved — öffne Wave und wave zurück",
   },
   fr: {
     matchTitle: "C'est un Match ! 🎉",
     matchBody: "Quelqu'un t'a wavé en retour ! Ouvre Wave pour voir qui.",
     waveTitle: "Quelqu'un t'a wavé ! 👋",
     waveBody: "Ouvre Wave pour waver en retour",
+    waveBodyWithNote: "\"{{note}}\" t'a wavé — ouvre Wave pour waver en retour",
   },
   es: {
     matchTitle: "¡Es un Match! 🎉",
     matchBody: "¡Alguien te devolvió el wave! Abre Wave para ver quién.",
     waveTitle: "¡Alguien te hizo wave! 👋",
     waveBody: "Abre Wave para devolver el wave",
+    waveBodyWithNote: "\"{{note}}\" te hizo wave — abre Wave para responder",
   },
   it: {
     matchTitle: "È un Match! 🎉",
     matchBody: "Qualcuno ha ricambiato il wave! Apri Wave per scoprire chi.",
     waveTitle: "Qualcuno ti ha wavato! 👋",
     waveBody: "Apri Wave per ricambiare",
+    waveBodyWithNote: "\"{{note}}\" ti ha wavato — apri Wave per ricambiare",
   },
   pt: {
     matchTitle: "É um Match! 🎉",
     matchBody: "Alguém retribuiu seu wave! Abra o Wave pra ver quem.",
     waveTitle: "Alguém te mandou um wave! 👋",
     waveBody: "Abra o Wave pra retribuir",
+    waveBodyWithNote: "\"{{note}}\" te mandou um wave — abra o Wave pra retribuir",
   },
   tr: {
     matchTitle: "Eşleşme! 🎉",
     matchBody: "Biri sana wave yaptı! Kimin olduğunu görmek için Wave'i aç.",
     waveTitle: "Biri sana wave yaptı! 👋",
     waveBody: "Wave'i aç ve karşılık ver",
+    waveBodyWithNote: "\"{{note}}\" sana wave yaptı — Wave'i aç ve karşılık ver",
   },
   sq: {
     matchTitle: "Është një Match! 🎉",
     matchBody: "Dikush të ktheu wave! Hap Wave për të parë kush.",
     waveTitle: "Dikush të bëri wave! 👋",
     waveBody: "Hap Wave për t'ia kthyer",
+    waveBodyWithNote: "\"{{note}}\" të bëri wave — hap Wave për t'ia kthyer",
   },
 };
 
@@ -264,18 +272,20 @@ serve(async (req: Request) => {
       }
 
       if (targetUserId) {
-        // Look up the waver's active ephemeral token so the target
-        // knows which radar peer waved at them
+        // Look up the waver's active ephemeral token + note so the target
+        // knows which radar peer waved at them and sees context in the push
         let waverToken: string | null = null;
+        let waverNote: string | null = null;
         try {
           const { data: waverRow } = await adminClient
             .from("ephemeral_ids")
-            .select("token")
+            .select("token, note")
             .eq("user_id", user.id)
             .eq("is_active", true)
             .limit(1)
             .maybeSingle();
           waverToken = waverRow?.token ?? null;
+          waverNote = waverRow?.note ?? null;
         } catch (err) {
           console.error("Failed to look up waver token:", err);
         }
@@ -305,10 +315,14 @@ serve(async (req: Request) => {
           // Non-fatal — fall back to English
         }
 
-        // Send push notification to target user
+        // Send push notification to target user — include waver's note for context
+        const pushBody = waverNote
+          ? getPushString(targetLocale, "waveBodyWithNote").replace("{{note}}", waverNote)
+          : getPushString(targetLocale, "waveBody");
+
         await sendExpoPush(adminClient, targetUserId, {
           title: getPushString(targetLocale, "waveTitle"),
-          body: getPushString(targetLocale, "waveBody"),
+          body: pushBody,
           data: { type: "wave" },
         });
       }

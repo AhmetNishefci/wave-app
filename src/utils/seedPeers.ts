@@ -77,6 +77,16 @@ const NAMES = [
   null,
 ];
 
+// Map some peer indices to fake match user IDs so "Still Nearby" badges
+// appear in dev when both seedFakePeers and seedFakeMatches are active.
+const PEER_USER_IDS: Record<number, string> = {
+  0: "fake-user-001",   // HERE zone — matches sarah.wave
+  3: "fake-user-004",   // HERE zone — matches emma.w
+  18: "fake-user-002",  // CLOSE zone — matches alex.smith
+  25: "fake-user-005",  // CLOSE zone — matches jake_adventures
+  45: "fake-user-007",  // NEARBY zone — matches marco.polo
+};
+
 function generatePeers(): NearbyPeer[] {
   const now = Date.now();
   const genders: ("male" | "female" | null)[] = ["female", "male", "female", "male", "female", "male", null, "female", "male", "female", "male", null];
@@ -106,6 +116,7 @@ function generatePeers(): NearbyPeer[] {
       gender: genders[i % genders.length],
       age: ages[i % ages.length],
       note: NAMES[i],
+      userId: PEER_USER_IDS[i] ?? null,
     });
   }
 

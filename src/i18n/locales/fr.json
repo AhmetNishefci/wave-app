@@ -173,6 +173,7 @@
   "match": {
     "title": "C'est un Match !",
     "subtitle": "Vous vous êtes wavé mutuellement",
+    "stillNearby": "Encore à proximité",
     "firstMatch": "Ton premier match !",
     "matchCount": "{{count}} matchs !",
     "loadingSocials": "Chargement des réseaux...",
@@ -200,6 +201,7 @@
     "lastWeek": "La semaine dernière",
     "earlier": "Plus tôt",
     "matchedAt": "Matché {{time}}",
+    "nearby": "À proximité",
     "emptyTitle": "Pas encore de matchs",
     "emptyDescription": "Quand toi et quelqu'un à proximité vous wavez mutuellement, vous matcherez et la personne apparaîtra ici.",
     "inviteFriends": "Inviter des amis à proximité",

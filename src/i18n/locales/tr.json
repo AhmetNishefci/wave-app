@@ -173,6 +173,7 @@
   "match": {
     "title": "Eşleşme oldu!",
     "subtitle": "İkiniz de birbirinize wave gönderdiniz",
+    "stillNearby": "Hâlâ yakında",
     "firstMatch": "İlk eşleşmen!",
     "matchCount": "{{count}} eşleşme!",
     "loadingSocials": "Sosyal medya yükleniyor...",
@@ -200,6 +201,7 @@
     "lastWeek": "Geçen hafta",
     "earlier": "Önceki",
     "matchedAt": "Eşleşme {{time}}",
+    "nearby": "Yakında",
     "emptyTitle": "Henüz eşleşme yok",
     "emptyDescription": "Sen ve yakınındaki biri birbirinize wave gönderdiğinizde eşleşirsiniz ve burada görünür.",
     "inviteFriends": "Yakındaki arkadaşlarını davet et",

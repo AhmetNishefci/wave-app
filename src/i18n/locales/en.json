@@ -173,6 +173,7 @@
   "match": {
     "title": "It's a Match!",
     "subtitle": "You both waved at each other",
+    "stillNearby": "Still nearby",
     "firstMatch": "Your first match!",
     "matchCount": "{{count}} matches!",
     "loadingSocials": "Loading socials...",
@@ -200,6 +201,7 @@
     "lastWeek": "Last Week",
     "earlier": "Earlier",
     "matchedAt": "Matched {{time}}",
+    "nearby": "Nearby",
     "emptyTitle": "No matches yet",
     "emptyDescription": "When you and someone nearby both wave at each other, you'll match and they'll appear here.",
     "inviteFriends": "Invite Friends Nearby",

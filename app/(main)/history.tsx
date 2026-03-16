@@ -9,6 +9,7 @@ import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SocialActionRow } from "@/components/SocialActionRow";
 import { COLORS } from "@/constants/colors";
+import { useNearbyMatchIds } from "@/hooks/useNearbyMatchIds";
 import type { Match } from "@/types";
 import { getAvatarForToken } from "@/types";
 import i18n from "@/i18n";
@@ -61,6 +62,7 @@ function groupByDate(matches: Match[]) {
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const matches = useWaveStore((s) => s.matches);
+  const nearbyMatchIds = useNearbyMatchIds();
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -210,7 +212,7 @@ export default function HistoryScreen() {
             </Text>
           )}
           renderItem={({ item }) => (
-            <MatchRow match={item} onPress={setSelectedMatch} />
+            <MatchRow match={item} onPress={setSelectedMatch} isNearby={nearbyMatchIds.has(item.matchedUserId)} />
           )}
           contentContainerStyle={{ paddingBottom: 100 }}
           stickySectionHeadersEnabled={false}
@@ -249,9 +251,11 @@ export default function HistoryScreen() {
 function MatchRow({
   match,
   onPress,
+  isNearby,
 }: {
   match: Match;
   onPress: (match: Match) => void;
+  isNearby?: boolean;
 }) {
   const { t } = useTranslation();
   const matchDate = new Date(match.createdAt);
@@ -284,7 +288,7 @@ function MatchRow({
       className="bg-wave-surface rounded-2xl p-4 mb-3 flex-row items-center"
     >
       {/* Avatar — unique per match, derived from matchedUserId */}
-      <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${avatar.bg} border-2 ${avatar.ring}`}>
+      <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${avatar.bg} border-2 ${isNearby ? "border-wave-accent" : avatar.ring}`}>
         <Text className="text-lg">{avatar.emoji}</Text>
       </View>
 
@@ -292,18 +296,32 @@ function MatchRow({
       <View className="flex-1">
         {hasHandle ? (
           <>
-            <Text className="text-white font-semibold text-base">
-              {displayName}
-            </Text>
+            <View className="flex-row items-center">
+              <Text className="text-white font-semibold text-base">
+                {displayName}
+              </Text>
+              {isNearby && (
+                <View className="bg-wave-accent/15 border border-wave-accent/30 rounded-full px-2 py-0.5 ml-2">
+                  <Text className="text-wave-accent text-[10px] font-semibold">{t("history.nearby")}</Text>
+                </View>
+              )}
+            </View>
             <Text className="text-wave-muted text-xs mt-1">
               {t("history.matchedAt", { time: matchLabel })}
             </Text>
           </>
         ) : (
           <>
-            <Text className="text-white font-semibold text-base">
-              {t("history.someoneNearby")}
-            </Text>
+            <View className="flex-row items-center">
+              <Text className="text-white font-semibold text-base">
+                {t("history.someoneNearby")}
+              </Text>
+              {isNearby && (
+                <View className="bg-wave-accent/15 border border-wave-accent/30 rounded-full px-2 py-0.5 ml-2">
+                  <Text className="text-wave-accent text-[10px] font-semibold">{t("history.nearby")}</Text>
+                </View>
+              )}
+            </View>
             <Text className="text-wave-muted text-xs mt-1">
               {t("history.matchedAt", { time: matchLabel })} · {t("history.noSocials")}
             </Text>

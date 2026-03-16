@@ -119,20 +119,20 @@ function processNotes(
   batchedTokens: string[],
   rows: { token: string; note: string | null; peer_user_id: string | null; is_blocked: boolean }[],
 ): void {
-  const noteMap = new Map<string, string | null>();
+  const dataMap = new Map<string, { note: string | null; userId: string | null }>();
   const blockedTokens = new Set<string>();
 
   for (const row of rows) {
-    noteMap.set(row.token, row.note);
+    dataMap.set(row.token, { note: row.note, userId: row.peer_user_id });
     if (row.is_blocked) {
       blockedTokens.add(row.token);
     }
   }
 
-  // Tokens queried but not returned — clear stale notes
+  // Tokens queried but not returned — clear stale data
   for (const token of batchedTokens) {
-    if (!noteMap.has(token)) {
-      noteMap.set(token, null);
+    if (!dataMap.has(token)) {
+      dataMap.set(token, { note: null, userId: null });
     }
   }
 
@@ -140,7 +140,7 @@ function processNotes(
     const next = new Map(state.nearbyPeers);
     let changed = false;
 
-    for (const [token, note] of noteMap) {
+    for (const [token, { note, userId }] of dataMap) {
       // Remove blocked peers from the radar
       if (blockedTokens.has(token)) {
         if (next.has(token)) {
@@ -151,8 +151,8 @@ function processNotes(
       }
 
       const peer = next.get(token);
-      if (peer && peer.note !== note) {
-        next.set(token, { ...peer, note });
+      if (peer && (peer.note !== note || peer.userId !== userId)) {
+        next.set(token, { ...peer, note, userId });
         changed = true;
       }
     }

@@ -262,6 +262,7 @@ function upsertPeerWithToken(device: Device, token: string, gender: Gender | nul
     gender: gender ?? existing?.gender ?? null,
     age: age ?? existing?.age ?? null,
     note: existing?.note ?? null,
+    userId: existing?.userId ?? null,
   };
 
   // Batch upserts to avoid creating a new Map on every BLE advertisement.

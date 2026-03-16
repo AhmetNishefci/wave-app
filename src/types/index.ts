@@ -24,6 +24,8 @@ export interface NearbyPeer {
   gender: Gender | null;
   age: number | null;
   note: string | null;
+  /** Resolved user ID from server. Set by useNoteResolver after token lookup. */
+  userId: string | null;
 }
 
 export type DistanceZone = "HERE" | "CLOSE" | "NEARBY";

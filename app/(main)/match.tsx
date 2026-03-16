@@ -19,6 +19,7 @@ import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
 import { MatchShareCard } from "@/components/MatchShareCard";
 import { getIcebreakerForMatch } from "@/constants/icebreakers";
 import { COLORS } from "@/constants/colors";
+import { useNearbyMatchIds } from "@/hooks/useNearbyMatchIds";
 import * as Clipboard from "expo-clipboard";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -45,6 +46,7 @@ export default function MatchScreen() {
   const router = useRouter();
   const latestUnseenMatch = useWaveStore((s) => s.latestUnseenMatch);
   const markMatchSeen = useWaveStore((s) => s.markMatchSeen);
+  const nearbyMatchIds = useNearbyMatchIds();
 
   // Snapshot the match on mount so it doesn't disappear mid-celebration
   // if the other user removes the match (L14 fix)
@@ -195,9 +197,17 @@ export default function MatchScreen() {
 
       {/* Match text */}
       <Text className="text-4xl font-bold text-white mb-2">{t("match.title")}</Text>
-      <Text className="text-wave-muted text-center text-base mb-4">
+      <Text className="text-wave-muted text-center text-base mb-2">
         {t("match.subtitle")}
       </Text>
+
+      {/* Still Nearby badge */}
+      {displayMatch && nearbyMatchIds.has(displayMatch.matchedUserId) && (
+        <View className="bg-wave-accent/15 border border-wave-accent/30 rounded-full px-4 py-1.5 mb-3 flex-row items-center">
+          <Ionicons name="radio" size={12} color={COLORS.accent} style={{ marginRight: 6 }} />
+          <Text className="text-wave-accent text-xs font-semibold">{t("match.stillNearby")}</Text>
+        </View>
+      )}
 
       {/* Milestone badge */}
       {milestone && (

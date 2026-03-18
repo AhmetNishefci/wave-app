@@ -3,6 +3,7 @@
     "wave": "Wave",
     "continue": "Continuar",
     "cancel": "Cancelar",
+    "done": "Listo",
     "save": "Guardar",
     "delete": "Eliminar",
     "remove": "Quitar",
@@ -308,6 +309,8 @@
     "unblocked": "Usuario desbloqueado",
     "unblockError": "No se pudo desbloquear. Inténtalo de nuevo.",
     "contactSupport": "Contactar soporte",
+    "emailSupport": "Enviar email",
+    "emailCopied": "Email copiado!",
     "supportTitle": "¿Cómo podemos ayudarte?",
     "supportDescription": "Cuéntanos qué pasa y te responderemos.",
     "supportBugReport": "Error o problema",
@@ -317,6 +320,9 @@
     "supportDetailsPlaceholder": "Describe tu problema...",
     "submitTicket": "Enviar",
     "ticketSubmitted": "¡Gracias! Lo revisaremos.",
+    "ticketConfirmedTitle": "Solicitud recibida",
+    "ticketConfirmedBody": "Nuestro equipo revisará tu solicitud y te responderá lo antes posible. Gracias por ayudarnos a mejorar Wave.",
+    "ticketRateLimited": "Has enviado demasiadas solicitudes. Inténtalo de nuevo en una hora.",
     "ticketError": "No se pudo enviar. Inténtalo de nuevo."
   },
 

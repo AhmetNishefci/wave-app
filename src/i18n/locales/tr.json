@@ -3,6 +3,7 @@
     "wave": "Wave",
     "continue": "Devam",
     "cancel": "İptal",
+    "done": "Tamam",
     "save": "Kaydet",
     "delete": "Sil",
     "remove": "Kaldır",
@@ -308,6 +309,8 @@
     "unblocked": "Engel kaldırıldı",
     "unblockError": "Engel kaldırılamadı. Tekrar dene.",
     "contactSupport": "Destek ile İletişim",
+    "emailSupport": "E-posta gönder",
+    "emailCopied": "E-posta kopyalandı!",
     "supportTitle": "Nasıl yardımcı olabiliriz?",
     "supportDescription": "Neler olduğunu anlat, sana dönüş yapalım.",
     "supportBugReport": "Hata veya sorun",
@@ -317,6 +320,9 @@
     "supportDetailsPlaceholder": "Sorununuzu açıklayın...",
     "submitTicket": "Gönder",
     "ticketSubmitted": "Teşekkürler! İnceleyeceğiz.",
+    "ticketConfirmedTitle": "Talebiniz alındı",
+    "ticketConfirmedBody": "Ekibimiz talebinizi inceleyip en kısa sürede size dönüş yapacak. Wave'i geliştirmemize yardımcı olduğunuz için teşekkürler.",
+    "ticketRateLimited": "Çok fazla talep gönderdiniz. Lütfen bir saat sonra tekrar deneyin.",
     "ticketError": "Gönderilemedi. Tekrar dene."
   },
 

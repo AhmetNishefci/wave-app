@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Linking, TextInput, Switch, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Linking, TextInput, Switch, RefreshControl, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
@@ -64,6 +64,8 @@ export default function SettingsScreen() {
   const [supportCategory, setSupportCategory] = useState<string | null>(null);
   const [supportDetails, setSupportDetails] = useState("");
   const [submittingTicket, setSubmittingTicket] = useState(false);
+  const [ticketConfirmed, setTicketConfirmed] = useState(false);
+  const [ticketError, setTicketError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<ToastVariant>("success");
   const langCode = i18n.language?.substring(0, 2) ?? "en";
@@ -110,23 +112,41 @@ export default function SettingsScreen() {
   const handleSubmitTicket = async () => {
     if (!supportCategory) return;
     setSubmittingTicket(true);
+    setTicketError(null);
     try {
+      // Store ticket in DB (rate limited, structured, auditable)
       const { error } = await supabase.rpc("create_support_ticket", {
-        p_category: supportCategory,  // Already stored as key (bug, account, feature, other)
+        p_category: supportCategory,
         p_details: supportDetails.trim() || null,
       });
-      setSubmittingTicket(false);
       if (error) {
-        showToast(t("settings.ticketError"), "error");
-      } else {
-        setShowSupport(false);
-        setSupportCategory(null);
-        setSupportDetails("");
-        showToast(t("settings.ticketSubmitted"));
+        setSubmittingTicket(false);
+        const isRateLimited = error.message?.includes("rate_limited");
+        setTicketError(isRateLimited ? t("settings.ticketRateLimited") : t("settings.ticketError"));
+        return;
       }
+
+      // Send email notification (non-blocking — ticket is saved even if email fails)
+      supabase.functions.invoke("send-support-email", {
+        body: {
+          category: supportCategory,
+          details: supportDetails.trim() || null,
+          device: {
+            appVersion: Constants.expoConfig?.version ?? "unknown",
+            platform: Platform.OS,
+            osVersion: Platform.Version,
+            deviceName: Constants.deviceName ?? "unknown",
+          },
+        },
+      }).catch(() => {
+        // Email failed silently — ticket is still in DB
+      });
+
+      setSubmittingTicket(false);
+      setTicketConfirmed(true);
     } catch {
       setSubmittingTicket(false);
-      showToast(t("settings.ticketError"), "error");
+      setTicketError(t("settings.ticketError"));
     }
   };
 
@@ -763,23 +783,34 @@ export default function SettingsScreen() {
           <Text className="text-white text-sm">{t("settings.contactSupport")}</Text>
           <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => Linking.openURL("mailto:support@wave-app.com?subject=Wave%20Support")}
+          className="py-3 flex-row justify-between items-center"
+        >
+          <Text className="text-white text-sm">{t("settings.emailSupport")}</Text>
+          <Ionicons name="open-outline" size={14} color={COLORS.muted} />
+        </TouchableOpacity>
       </Section>
 
-      {/* Legal */}
+      {/* Legal — opens in browser (external links) */}
       <Section title={t("settings.legal")}>
         <TouchableOpacity
           onPress={() => Linking.openURL("https://wave-app.com/privacy")}
           className="py-3 flex-row justify-between items-center"
+          accessibilityLabel={t("settings.privacyPolicy")}
+          accessibilityRole="link"
         >
           <Text className="text-white text-sm">{t("settings.privacyPolicy")}</Text>
-          <Text className="text-wave-muted text-xs">&rsaquo;</Text>
+          <Ionicons name="open-outline" size={14} color={COLORS.muted} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => Linking.openURL("https://wave-app.com/terms")}
           className="py-3 flex-row justify-between items-center"
+          accessibilityLabel={t("settings.termsOfService")}
+          accessibilityRole="link"
         >
           <Text className="text-white text-sm">{t("settings.termsOfService")}</Text>
-          <Text className="text-wave-muted text-xs">&rsaquo;</Text>
+          <Ionicons name="open-outline" size={14} color={COLORS.muted} />
         </TouchableOpacity>
       </Section>
 
@@ -1005,75 +1036,106 @@ export default function SettingsScreen() {
     </BottomSheet>
 
     {/* Support ticket */}
-    <BottomSheet visible={showSupport} onClose={() => { setShowSupport(false); setSupportCategory(null); setSupportDetails(""); }}>
-      <View className="items-center mb-5">
-        <Ionicons name="chatbubble-ellipses-outline" size={32} color={COLORS.primary} style={{ marginBottom: 12 }} />
-        <Text className="text-white text-lg font-semibold">{t("settings.supportTitle")}</Text>
-        <Text className="text-wave-muted text-sm mt-2 text-center">{t("settings.supportDescription")}</Text>
-      </View>
+    <BottomSheet visible={showSupport} onClose={() => { setShowSupport(false); setTimeout(() => { setSupportCategory(null); setSupportDetails(""); setTicketConfirmed(false); setTicketError(null); }, 300); }}>
+      {ticketConfirmed ? (
+        <>
+          <View className="items-center mb-6">
+            <View className="w-16 h-16 rounded-full bg-wave-accent/20 items-center justify-center mb-4">
+              <Ionicons name="checkmark-circle" size={36} color={COLORS.accent} />
+            </View>
+            <Text className="text-white text-lg font-semibold mb-2">{t("settings.ticketConfirmedTitle")}</Text>
+            <Text className="text-wave-muted text-sm text-center px-4">{t("settings.ticketConfirmedBody")}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setShowSupport(false);
+              // Reset form AFTER sheet animation completes so the form doesn't flash
+              setTimeout(() => { setSupportCategory(null); setSupportDetails(""); setTicketConfirmed(false); setTicketError(null); }, 300);
+            }}
+            className="w-full bg-wave-primary rounded-2xl py-4 items-center"
+            activeOpacity={0.8}
+          >
+            <Text className="text-white text-sm font-semibold">{t("common.done")}</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <View className="items-center mb-5">
+            <Ionicons name="chatbubble-ellipses-outline" size={32} color={COLORS.primary} style={{ marginBottom: 12 }} />
+            <Text className="text-white text-lg font-semibold">{t("settings.supportTitle")}</Text>
+            <Text className="text-wave-muted text-sm mt-2 text-center">{t("settings.supportDescription")}</Text>
+          </View>
 
-      <View style={{ gap: 6 }} className="mb-4">
-        {[
-          { key: "bug", label: t("settings.supportBugReport"), icon: "bug-outline" as const },
-          { key: "account", label: t("settings.supportAccountIssue"), icon: "person-outline" as const },
-          { key: "feature", label: t("settings.supportFeatureRequest"), icon: "bulb-outline" as const },
-          { key: "other", label: t("settings.supportOther"), icon: "ellipsis-horizontal-outline" as const },
-        ].map((item) => {
-          const isSelected = supportCategory === item.key;
-          return (
-            <TouchableOpacity
-              key={item.key}
-              onPress={() => setSupportCategory(item.key)}
-              className={`rounded-xl py-3 px-4 flex-row items-center border ${
-                isSelected ? "bg-wave-primary/15 border-wave-primary/30" : "bg-wave-bg border-transparent"
-              }`}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={item.icon} size={20} color={isSelected ? COLORS.primary : COLORS.text} style={{ marginRight: 12 }} />
-              <Text className={`text-sm font-semibold flex-1 ${isSelected ? "text-white" : "text-wave-muted"}`}>{item.label}</Text>
-              {isSelected && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+          <View style={{ gap: 6 }} className="mb-4">
+            {[
+              { key: "bug", label: t("settings.supportBugReport"), icon: "bug-outline" as const },
+              { key: "account", label: t("settings.supportAccountIssue"), icon: "person-outline" as const },
+              { key: "feature", label: t("settings.supportFeatureRequest"), icon: "bulb-outline" as const },
+              { key: "other", label: t("settings.supportOther"), icon: "ellipsis-horizontal-outline" as const },
+            ].map((item) => {
+              const isSelected = supportCategory === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  onPress={() => setSupportCategory(item.key)}
+                  className={`rounded-xl py-3 px-4 flex-row items-center border ${
+                    isSelected ? "bg-wave-primary/15 border-wave-primary/30" : "bg-wave-bg border-transparent"
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={item.icon} size={20} color={isSelected ? COLORS.primary : COLORS.text} style={{ marginRight: 12 }} />
+                  <Text className={`text-sm font-semibold flex-1 ${isSelected ? "text-white" : "text-wave-muted"}`}>{item.label}</Text>
+                  {isSelected && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-      {supportCategory && (
-        <View className="bg-wave-bg rounded-xl px-4 mb-4" style={{ height: 80 }}>
-          <TextInput
-            value={supportDetails}
-            onChangeText={setSupportDetails}
-            placeholder={t("settings.supportDetailsPlaceholder")}
-            placeholderTextColor={COLORS.placeholder}
-            multiline
-            className="flex-1 text-white text-sm"
-            style={{ paddingVertical: 12, textAlignVertical: "top" }}
-            maxLength={1000}
-          />
-        </View>
+          {supportCategory && (
+            <View className="bg-wave-bg rounded-xl px-4 mb-4" style={{ height: 80 }}>
+              <TextInput
+                value={supportDetails}
+                onChangeText={setSupportDetails}
+                placeholder={t("settings.supportDetailsPlaceholder")}
+                placeholderTextColor={COLORS.placeholder}
+                multiline
+                className="flex-1 text-white text-sm"
+                style={{ paddingVertical: 12, textAlignVertical: "top" }}
+                maxLength={1000}
+              />
+            </View>
+          )}
+
+          {ticketError && (
+            <View className="bg-wave-danger/15 border border-wave-danger/30 rounded-xl px-4 py-3 mb-3">
+              <Text className="text-wave-danger text-sm text-center">{ticketError}</Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            onPress={handleSubmitTicket}
+            disabled={!supportCategory || submittingTicket}
+            className={`w-full rounded-2xl py-4 items-center justify-center mb-2 ${supportCategory ? "bg-wave-primary" : "bg-wave-primary/30"}`}
+            activeOpacity={0.8}
+          >
+            {submittingTicket ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Text className={`text-sm font-semibold ${supportCategory ? "text-white" : "text-wave-muted"}`}>
+                {t("settings.submitTicket")}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => { setShowSupport(false); setSupportCategory(null); setSupportDetails(""); }}
+            className="items-center py-2"
+            activeOpacity={0.7}
+          >
+            <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+          </TouchableOpacity>
+        </>
       )}
-
-      <TouchableOpacity
-        onPress={handleSubmitTicket}
-        disabled={!supportCategory || submittingTicket}
-        className={`w-full rounded-2xl py-4 items-center justify-center mb-2 ${supportCategory ? "bg-wave-primary" : "bg-wave-primary/30"}`}
-        activeOpacity={0.8}
-      >
-        {submittingTicket ? (
-          <ActivityIndicator size="small" color={COLORS.white} />
-        ) : (
-          <Text className={`text-sm font-semibold ${supportCategory ? "text-white" : "text-wave-muted"}`}>
-            {t("settings.submitTicket")}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => { setShowSupport(false); setSupportCategory(null); setSupportDetails(""); }}
-        className="items-center py-2"
-        activeOpacity={0.7}
-      >
-        <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
-      </TouchableOpacity>
     </BottomSheet>
 
     </>

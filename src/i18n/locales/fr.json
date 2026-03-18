@@ -3,6 +3,7 @@
     "wave": "Wave",
     "continue": "Continuer",
     "cancel": "Annuler",
+    "done": "Terminé",
     "save": "Enregistrer",
     "delete": "Supprimer",
     "remove": "Retirer",
@@ -308,6 +309,8 @@
     "unblocked": "Utilisateur débloqué",
     "unblockError": "Impossible de débloquer. Réessaie.",
     "contactSupport": "Contacter le support",
+    "emailSupport": "Nous écrire",
+    "emailCopied": "E-mail copié !",
     "supportTitle": "Comment pouvons-nous t'aider ?",
     "supportDescription": "Dis-nous ce qui se passe et on revient vers toi.",
     "supportBugReport": "Bug ou problème",
@@ -317,6 +320,9 @@
     "supportDetailsPlaceholder": "Décris ton problème...",
     "submitTicket": "Envoyer",
     "ticketSubmitted": "Merci ! On s'en occupe.",
+    "ticketConfirmedTitle": "Demande reçue",
+    "ticketConfirmedBody": "Notre équipe examinera votre demande et vous répondra dès que possible. Merci de nous aider à améliorer Wave.",
+    "ticketRateLimited": "Vous avez envoyé trop de demandes. Veuillez réessayer dans une heure.",
     "ticketError": "Envoi impossible. Réessaie."
   },
 

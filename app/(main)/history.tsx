@@ -1,5 +1,6 @@
 import { View, Text, TextInput, SectionList, TouchableOpacity, Share, Alert, ActivityIndicator, RefreshControl } from "react-native";
 import { useMemo, useEffect, useRef, useCallback, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useMatchStore } from "@/stores/matchStore";
@@ -111,11 +112,13 @@ export default function HistoryScreen() {
     }
   }, [loadingMore, hasMore, matches]);
 
-  // Mark all unseen matches as seen when this screen is visible (L13 fix)
-  // Track which match IDs we've already marked to avoid re-running,
-  // but allow new unseen matches to be marked if they arrive while mounted.
+  // Mark all unseen matches as seen only when this tab is FOCUSED (not just mounted).
+  // Tab navigators mount all screens simultaneously, so checking isFocused prevents
+  // the badge from disappearing before the user actually views the history tab.
+  const isFocused = useIsFocused();
   const seenIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    if (!isFocused) return;
     const unseen = matches.filter(
       (m) => !m.seen && !seenIdsRef.current.has(m.matchId),
     );
@@ -126,7 +129,7 @@ export default function HistoryScreen() {
         seenIdsRef.current.add(m.matchId);
       }
     }
-  }, [matches]);
+  }, [matches, isFocused]);
 
   const handleInvite = async () => {
     try {

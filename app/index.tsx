@@ -36,6 +36,10 @@ export default function IndexScreen() {
       // Check again after async gap
       if (generation !== generationRef.current) return;
 
+      if (success) {
+        handledRef.current = true;
+      }
+
       if (!success) {
         if (retryCount < MAX_PROFILE_RETRIES) {
           const nextRetry = retryCount + 1;
@@ -56,6 +60,11 @@ export default function IndexScreen() {
     [router],
   );
 
+  // Track whether this screen has already been handled — prevents redundant
+  // fetchAndRoute calls when auth state changes while the user is already
+  // navigating through onboarding (login.tsx handles routing on sign-in).
+  const handledRef = useRef(false);
+
   useEffect(() => {
     if (isLoading) return;
 
@@ -66,10 +75,16 @@ export default function IndexScreen() {
     setIsNavigating(false);
 
     if (!isAuthenticated) {
+      handledRef.current = false; // Reset on sign-out so next sign-in re-routes
       logger.auth("No session, redirecting to login");
       router.replace("/login");
       return;
     }
+
+    // Skip if this effect already dispatched a successful route for this
+    // session. Prevents redundant fetchAndRoute when isAuthenticated flips
+    // to true (auth state change) while the user is mid-onboarding.
+    if (handledRef.current) return;
 
     navigateWithRetry(generation, 0);
 

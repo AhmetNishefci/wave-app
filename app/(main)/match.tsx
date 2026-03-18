@@ -45,7 +45,6 @@ export default function MatchScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
-  const markMatchSeen = useMatchStore((s) => s.markMatchSeen);
   const nearbyMatchIds = useNearbyMatchIds();
 
   // Snapshot the match on mount so it doesn't disappear mid-celebration
@@ -165,8 +164,11 @@ export default function MatchScreen() {
   const openSnapchat = () => scHandle && openSnapchatProfile(scHandle);
 
   const handleDismiss = () => {
+    // Clear latestUnseenMatch so MainLayout doesn't re-push the celebration,
+    // but do NOT mark as seen — the badge on the Matches tab should persist
+    // until the user actually taps on the Matches tab.
     if (displayMatch) {
-      markMatchSeen(displayMatch.matchId);
+      useMatchStore.setState({ latestUnseenMatch: null });
     }
     router.replace("/(main)/radar");
   };

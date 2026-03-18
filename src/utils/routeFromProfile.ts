@@ -15,11 +15,14 @@ const FETCH_TIMEOUT_MS = 15_000; // 15s timeout per attempt to prevent infinite 
  * Returns false if the profile fetch failed or timed out (caller should handle retry).
  */
 export async function fetchAndRoute(router: Router): Promise<boolean> {
+  let didResolve = false;
   const profile = await Promise.race([
-    fetchProfile(),
+    fetchProfile().then((p) => { didResolve = true; return p; }),
     new Promise<null>((resolve) => {
       setTimeout(() => {
-        logger.error("Profile fetch timed out");
+        if (!didResolve) {
+          logger.error("Profile fetch timed out");
+        }
         resolve(null);
       }, FETCH_TIMEOUT_MS);
     }),

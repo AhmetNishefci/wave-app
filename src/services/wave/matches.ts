@@ -135,13 +135,20 @@ async function mergeServerMatches(
       const isUserA = row.user_a === userId;
       const matchedUserId = isUserA ? row.user_b : row.user_a;
 
+      // Mark as unseen only if this is a recent match (< 5 min old) that the
+      // user hasn't seen yet. This triggers the celebration screen for matches
+      // that arrived while the app was closed, without flooding the user with
+      // celebrations for old matches after a fresh install or data clear.
+      const ageMs = Date.now() - new Date(row.created_at).getTime();
+      const isRecent = ageMs < 5 * 60_000; // 5 minutes
+
       return {
         matchId: row.id,
         matchedUserId,
         instagramHandle: handleMap.get(row.id)?.instagram,
         snapchatHandle: handleMap.get(row.id)?.snapchat,
         createdAt: row.created_at,
-        seen: true, // Server-fetched matches are treated as seen
+        seen: !(isFirstPage && isRecent),
       };
     });
 

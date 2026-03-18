@@ -92,7 +92,7 @@ function createChannel(userId: string): void {
       }
 
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        logger.error("Realtime subscription error, scheduling reconnect", err);
+        logger.warn("Realtime subscription error, scheduling reconnect", err);
         scheduleReconnect(userId);
       }
 
@@ -172,7 +172,7 @@ async function fetchMatchHandle(matchId: string): Promise<void> {
     });
 
     if (error) {
-      logger.error(`RPC get_matched_contact_handles failed (attempt ${attempt + 1})`, error);
+      logger.warn(`RPC get_matched_contact_handles failed (attempt ${attempt + 1})`, error);
       if (attempt < MAX_RETRIES - 1) {
         await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
         continue;

@@ -76,7 +76,7 @@ async function flushOfflineQueue(): Promise<void> {
     }
 
     sendWave(queued.token).catch((e) =>
-      logger.error("Offline wave retry failed", e),
+      logger.warn("Offline wave retry failed", e),
     );
   }
 
@@ -95,7 +95,7 @@ export async function sendWave(
   try {
     const session = await getFreshSession();
     if (!session) {
-      logger.error("Cannot send wave: no active session");
+      logger.warn("Cannot send wave: no active session");
       return { status: "error" };
     }
 

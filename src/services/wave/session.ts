@@ -24,7 +24,7 @@ export async function getFreshSession(): Promise<Session | null> {
   const { data: refreshed, error } = await supabase.auth.refreshSession();
 
   if (error || !refreshed.session) {
-    logger.error("Session refresh failed — user must re-authenticate", error);
+    logger.warn("Session refresh failed — user must re-authenticate", error);
     return null;
   }
 

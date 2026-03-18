@@ -78,7 +78,7 @@ export function useBleLifecycle() {
           // Fetch server matches to catch any created while backgrounded or
           // during network failures (wave sent → network drop → match created)
           fetchMatchesFromServer().catch((e) =>
-            logger.error("Match reconciliation on foreground failed (non-fatal)", e),
+            logger.warn("Match reconciliation on foreground failed (non-fatal)", e),
           );
 
           // Refresh location so proximity alerts stay fresh while backgrounded
@@ -87,7 +87,7 @@ export function useBleLifecycle() {
             getCurrentLocation().then((loc) => {
               if (loc) {
                 updateLocationOnServer(loc.latitude, loc.longitude).catch((e) =>
-                  logger.error("Location refresh on foreground failed (non-fatal)", e),
+                  logger.warn("Location refresh on foreground failed (non-fatal)", e),
                 );
               }
             });

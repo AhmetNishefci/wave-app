@@ -20,7 +20,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "com.ahmetnishefci.waveapp",
     appleTeamId: "MC275WP2T8",
     entitlements: {
-      "aps-environment": "development",
+      "aps-environment": process.env.EAS_BUILD_PROFILE === "production" ? "production" : "development",
       "com.apple.developer.applesignin": ["Default"],
     },
     infoPlist: {
@@ -86,6 +86,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         locationWhenInUsePermission:
           "Wave uses your location to notify you when other Wave users are nearby.",
+      },
+    ],
+    [
+      "@sentry/react-native/expo",
+      {
+        organization: "wave-99",
+        project: "react-native",
       },
     ],
   ],

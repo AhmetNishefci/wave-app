@@ -22,7 +22,7 @@ export async function syncLocaleToServer(locale: string): Promise<void> {
     await supabase.from("profiles").update({ locale }).eq("id", user.id);
     logger.auth("Locale synced to server", { locale });
   } catch (err) {
-    logger.error("Locale sync failed (non-fatal)", err);
+    logger.warn("Locale sync failed (non-fatal)", err);
   }
 }
 
@@ -50,7 +50,7 @@ export async function fetchProfile(): Promise<UserProfile | null> {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("fetchProfile: no user");
+      logger.warn("fetchProfile: no user");
       return null;
     }
 
@@ -104,7 +104,7 @@ export async function saveDateOfBirth(dob: string): Promise<boolean> {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveDateOfBirth: no user");
+      logger.warn("saveDateOfBirth: no user");
       return false;
     }
 
@@ -120,7 +120,7 @@ export async function saveDateOfBirth(dob: string): Promise<boolean> {
     }
 
     if (!updated || updated.length === 0) {
-      logger.error("saveDateOfBirth: no profile row — attempting upsert fallback", { userId: user.id });
+      logger.warn("saveDateOfBirth: no profile row — attempting upsert fallback", { userId: user.id });
       const { error: upsertError } = await supabase
         .from("profiles")
         .upsert(
@@ -158,7 +158,7 @@ export async function saveGenderProfile(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveGenderProfile: no user");
+      logger.warn("saveGenderProfile: no user");
       return false;
     }
 
@@ -183,7 +183,7 @@ export async function saveGenderProfile(
     // If no row was updated, the auth trigger may not have fired yet.
     // Fall back to an upsert to create the profile row.
     if (!updated || updated.length === 0) {
-      logger.error("saveGenderProfile: no profile row — attempting upsert fallback", { userId: user.id });
+      logger.warn("saveGenderProfile: no profile row — attempting upsert fallback", { userId: user.id });
       const { error: upsertError } = await supabase
         .from("profiles")
         .upsert(
@@ -217,7 +217,7 @@ export async function updateGenderPreference(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("updateGenderPreference: no user");
+      logger.warn("updateGenderPreference: no user");
       return false;
     }
 
@@ -252,7 +252,7 @@ export async function updateAgePreference(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("updateAgePreference: no user");
+      logger.warn("updateAgePreference: no user");
       return false;
     }
 
@@ -299,7 +299,7 @@ export async function saveInstagramHandle(
     // Must start and end with alphanumeric, no consecutive dots (M2 fix).
     const igRegex = /^[a-z0-9](?:[a-z0-9._]{0,28}[a-z0-9])?$/;
     if (!igRegex.test(handle) || handle.includes("..")) {
-      logger.error("saveInstagramHandle: invalid format", { handle });
+      logger.warn("saveInstagramHandle: invalid format", { handle });
       return { handle: null, error: "invalid" };
     }
 
@@ -308,7 +308,7 @@ export async function saveInstagramHandle(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveInstagramHandle: no user");
+      logger.warn("saveInstagramHandle: no user");
       return { handle: null };
     }
 
@@ -322,7 +322,7 @@ export async function saveInstagramHandle(
       // PostgreSQL 23505 = unique constraint violation on instagram_handle index.
       // This means another (non-anonymous) user already has this handle.
       if (error.code === "23505") {
-        logger.error("saveInstagramHandle: handle already taken", { handle });
+        logger.warn("saveInstagramHandle: handle already taken", { handle });
         return { handle: null, error: "taken" };
       }
       logger.error("saveInstagramHandle error", error);
@@ -355,7 +355,7 @@ export async function saveSnapchatHandle(
     // end with letter or number.
     const scRegex = /^[a-z][a-z0-9._-]{1,13}[a-z0-9]$/;
     if (!scRegex.test(handle)) {
-      logger.error("saveSnapchatHandle: invalid format", { handle });
+      logger.warn("saveSnapchatHandle: invalid format", { handle });
       return { handle: null, error: "invalid" };
     }
 
@@ -364,7 +364,7 @@ export async function saveSnapchatHandle(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveSnapchatHandle: no user");
+      logger.warn("saveSnapchatHandle: no user");
       return { handle: null };
     }
 
@@ -374,7 +374,7 @@ export async function saveSnapchatHandle(
 
     if (error) {
       if (error.code === "23505") {
-        logger.error("saveSnapchatHandle: handle already taken", { handle });
+        logger.warn("saveSnapchatHandle: handle already taken", { handle });
         return { handle: null, error: "taken" };
       }
       logger.error("saveSnapchatHandle error", error);
@@ -400,14 +400,14 @@ export async function saveNote(rawNote: string | null): Promise<boolean> {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveNote: no user");
+      logger.warn("saveNote: no user");
       return false;
     }
 
     const note = rawNote?.trim() || null;
 
     if (note && note.length > 40) {
-      logger.error("saveNote: exceeds 40 chars", { length: note.length });
+      logger.warn("saveNote: exceeds 40 chars", { length: note.length });
       return false;
     }
 
@@ -424,7 +424,7 @@ export async function saveNote(rawNote: string | null): Promise<boolean> {
 
     // Check that a row was actually updated (H5 fix)
     if (!updated || updated.length === 0) {
-      logger.error("saveNote: no profile row found for user", { userId: user.id });
+      logger.warn("saveNote: no profile row found for user", { userId: user.id });
       return false;
     }
 
@@ -436,7 +436,7 @@ export async function saveNote(rawNote: string | null): Promise<boolean> {
     });
     if (rpcError) {
       // Non-fatal: profile is saved, token will catch up on next rotation
-      logger.error("update_active_note RPC error (non-fatal)", rpcError);
+      logger.warn("update_active_note RPC error (non-fatal)", rpcError);
     }
 
     logger.auth("Note saved", { note });
@@ -459,7 +459,7 @@ export async function saveNearbyAlertsPreference(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveNearbyAlertsPreference: no user");
+      logger.warn("saveNearbyAlertsPreference: no user");
       return false;
     }
 
@@ -493,7 +493,7 @@ export async function saveDailyPushesPreference(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("saveDailyPushesPreference: no user");
+      logger.warn("saveDailyPushesPreference: no user");
       return false;
     }
 

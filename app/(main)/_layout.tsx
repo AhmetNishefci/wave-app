@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Sentry from "@sentry/react-native";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { useMatchStore } from "@/stores/matchStore";
+import { useBleStore } from "@/stores/bleStore";
 import * as Notifications from "expo-notifications";
 import { useBleLifecycle } from "@/hooks/useBleLifecycle";
 import { useEphemeralRotation } from "@/hooks/useEphemeralRotation";
@@ -16,6 +18,13 @@ export default function MainLayout() {
   const router = useRouter();
   const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
   const unseenCount = useMatchStore((s) => s.unseenCount);
+  const adapterState = useBleStore((s) => s.adapterState);
+  const isDiscoveryActive = useBleStore((s) => s.isDiscoveryActive);
+
+  // Keep Sentry context updated with BLE state for crash diagnostics
+  useEffect(() => {
+    Sentry.setContext("ble", { adapterState, isDiscoveryActive });
+  }, [adapterState, isDiscoveryActive]);
 
   // Sync app icon badge with unseen match count
   useEffect(() => {

@@ -20,7 +20,7 @@ export async function fetchMatchesFromServer(): Promise<boolean> {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      logger.error("fetchMatchesFromServer: no user");
+      logger.warn("fetchMatchesFromServer: no user");
       return false;
     }
 

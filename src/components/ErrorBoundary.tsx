@@ -1,5 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import * as Sentry from "@sentry/react-native";
 import { COLORS } from "@/constants/colors";
 
 interface Props {
@@ -11,8 +12,8 @@ interface State {
 }
 
 /**
- * Root error boundary — catches unhandled JS errors and shows a
- * recovery screen instead of a white screen crash.
+ * Root error boundary — catches unhandled JS errors, reports to Sentry,
+ * and shows a recovery screen instead of a white screen crash.
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -25,9 +26,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Always log — surfaces in Xcode console for TestFlight builds
-    // and will feed into Sentry once integrated (see README roadmap).
     console.error("[ErrorBoundary]", error, info.componentStack);
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: info.componentStack ?? "" } },
+    });
   }
 
   handleReset = () => {

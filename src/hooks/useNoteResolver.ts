@@ -85,7 +85,7 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
               );
             }
           } else {
-            logger.error("resolve_peer_data RPC error", error);
+            logger.warn("resolve_peer_data RPC error", error);
           }
           return;
         }
@@ -103,7 +103,7 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
 
         processNotes(batchedTokens, rows);
       } catch (err) {
-        logger.error("useNoteResolver tick error", err);
+        logger.warn("useNoteResolver tick error", err);
       } finally {
         inFlightRef.current = false;
       }

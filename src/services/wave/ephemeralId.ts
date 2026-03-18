@@ -27,7 +27,7 @@ export async function fetchNewToken(): Promise<TokenResponse | null> {
         return result;
       }
     } catch (error) {
-      logger.error(
+      logger.warn(
         `Token fetch attempt ${attempt + 1}/${MAX_RETRIES + 1} failed`,
         error,
       );
@@ -49,7 +49,7 @@ async function attemptFetchToken(): Promise<TokenResponse | null> {
   const session = await getFreshSession();
 
   if (!session) {
-    logger.error("Cannot fetch token: no valid session");
+    logger.warn("Cannot fetch token: no valid session");
     return null;
   }
 

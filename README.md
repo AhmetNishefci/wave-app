@@ -22,29 +22,28 @@ Privacy is core to the design: users are identified only by ephemeral tokens tha
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  React Native App                │
-│                                                  │
-│  Expo Router (file-based)    Zustand (3 stores)  │
-│  NativeWind / Tailwind       Reanimated 4        │
-│                                                  │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
-│  │ BLE      │  │ Wave     │  │ Auth          │  │
-│  │ Scanner  │  │ Service  │  │ (Google SSO)  │  │
-│  │ + Periph │  │ + Realtime│  │               │  │
-│  └────┬─────┘  └────┬─────┘  └───────┬───────┘  │
-│       │              │                │          │
-└───────┼──────────────┼────────────────┼──────────┘
-        │              │                │
-        ▼              ▼                ▼
-┌─────────────────────────────────────────────────┐
-│                   Supabase                       │
-│                                                  │
-│  Auth (Apple/Google/Phone) Realtime (broadcast)   │
-│  PostgreSQL + PostGIS    Edge Functions (Deno)   │
-│  RLS policies            pg_cron + pg_net        │
-│  Push via Expo API                               │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  React Native App (Expo 54, RN 0.81)                 │
+│                                                       │
+│  Expo Router 6           Zustand 5 (5 stores)        │
+│  NativeWind / Tailwind   Reanimated 4                │
+│                                                       │
+│  ┌────────────┐  ┌────────────┐  ┌───────────────┐  │
+│  │ BLE        │  │ Wave       │  │ Auth           │  │
+│  │ Scanner    │  │ Service    │  │ (Google/Apple/ │  │
+│  │ + Periph   │  │ + Realtime │  │  Phone OTP)    │  │
+│  └─────┬──────┘  └─────┬──────┘  └───────┬───────┘  │
+└────────┼───────────────┼─────────────────┼───────────┘
+         │               │                 │
+         ▼               ▼                 ▼
+┌──────────────────────────────────────────────────────┐
+│  Supabase                                             │
+│                                                       │
+│  Auth (Apple/Google/Phone)  Realtime (broadcast)      │
+│  PostgreSQL + PostGIS       11 Edge Functions (Deno)  │
+│  RLS + SECURITY DEFINER    pg_cron + pg_net           │
+│  Push via Expo API          Email via Resend          │
+└──────────────────────────────────────────────────────┘
 ```
 
 ### Client Stack
@@ -53,13 +52,14 @@ Privacy is core to the design: users are identified only by ephemeral tokens tha
 |-------|-----------|
 | Framework | React Native 0.81 + Expo 54 (New Architecture) |
 | Routing | Expo Router 6 (file-based) |
-| State | Zustand 5 (`authStore`, `bleStore`, `waveStore`) |
+| State | Zustand 5 (`tokenStore`, `waveStore`, `matchStore`, `bleStore`, `authStore`) |
 | Styling | NativeWind 4 / Tailwind CSS 3.4 |
 | Animations | React Native Reanimated 4 |
 | BLE Central | `react-native-ble-plx` 3.5 |
 | BLE Peripheral | Custom Expo module (`expo-ble-peripheral`, Swift/CoreBluetooth) |
 | Auth | `expo-apple-authentication` + `@react-native-google-signin/google-signin` + Phone OTP → Supabase Auth |
 | Networking | `@react-native-community/netinfo` for offline detection |
+| i18n | `react-i18next` with 7 languages (EN, DE, FR, ES, IT, PT, TR) |
 
 ### Backend Stack
 
@@ -67,21 +67,23 @@ Privacy is core to the design: users are identified only by ephemeral tokens tha
 |-------|-----------|
 | Database | Supabase PostgreSQL with PostGIS |
 | Auth | Supabase Auth (Apple + Google ID token exchange, Phone OTP via Twilio) |
-| API | 9 Supabase Edge Functions (Deno/TypeScript) |
+| API | 11 Supabase Edge Functions (Deno/TypeScript) with Zod validation |
 | Realtime | Supabase Realtime broadcast channels |
-| Push Notifications | Expo Push API (via `pg_net` from Edge Functions) |
+| Push Notifications | Expo Push API (via Edge Functions) |
+| Support Email | Resend API |
 | Scheduled Jobs | `pg_cron` (cleanup, daily engagement) |
 | Access Control | Row Level Security (RLS) + `SECURITY DEFINER` functions |
+| CORS | Origin-aware shared module (restricts browser access) |
 
 ---
 
 ## Project Structure
 
 ```
-Wave/
+Wave-app/
 ├── app/                          # Expo Router screens
 │   ├── _layout.tsx               # Root layout (auth gate)
-│   ├── index.tsx                 # Entry redirect
+│   ├── index.tsx                 # Splash / entry redirect
 │   ├── login.tsx                 # Sign in (Apple, Google, Phone)
 │   ├── phone-login.tsx           # Phone number + OTP verification
 │   ├── birthday.tsx              # Age verification (DOB input)
@@ -95,68 +97,80 @@ Wave/
 │       ├── radar.tsx             # Live peer radar (main screen)
 │       ├── history.tsx           # Match history (paginated)
 │       ├── match.tsx             # Match celebration + confetti
-│       └── settings.tsx          # Profile & app settings
+│       └── settings.tsx          # Profile, support & app settings
 ├── src/
 │   ├── components/               # Reusable UI components
-│   ├── hooks/                    # Custom hooks
-│   │   ├── useBleLifecycle.ts    # BLE manager lifecycle + foreground reconciliation
+│   ├── hooks/
+│   │   ├── useBleLifecycle.ts    # BLE lifecycle + foreground reconciliation
 │   │   ├── useEphemeralRotation.ts # Token rotation timer
 │   │   ├── useMatchListener.ts   # Realtime subscription hook
+│   │   ├── useNearbyMatchIds.ts  # Nearby match detection
 │   │   ├── useNetworkStatus.ts   # Connectivity monitoring
 │   │   ├── useNoteResolver.ts    # Batch note resolution (polling)
 │   │   └── useNotifications.ts   # Push notification registration
 │   ├── services/
-│   │   ├── auth.ts               # Google Sign In + Sign Out
+│   │   ├── auth.ts               # Google/Apple/Phone auth + sign-out
 │   │   ├── supabase.ts           # Supabase client init
-│   │   ├── profile.ts            # User profile CRUD
+│   │   ├── profile.ts            # User profile CRUD + timezone sync
 │   │   ├── notifications.ts      # Push token registration
 │   │   ├── location.ts           # Location tracking
 │   │   ├── ble/
-│   │   │   ├── constants.ts      # BLE UUIDs, timing constants
+│   │   │   ├── bleManager.ts     # BLE lifecycle manager (singleton)
 │   │   │   ├── scanner.ts        # BLE central (scan + GATT reads)
-│   │   │   └── peripheral.ts     # BLE peripheral (advertising)
+│   │   │   ├── advertiser.ts     # BLE peripheral (advertising)
+│   │   │   ├── permissions.ts    # Bluetooth permission handling
+│   │   │   ├── parsePayload.ts   # Shared BLE payload parser
+│   │   │   └── constants.ts      # BLE UUIDs, timing constants
 │   │   └── wave/
-│   │       ├── waves.ts          # Send wave, undo wave, remove match + offline queue
+│   │       ├── waves.ts          # Send/undo wave, block, remove match + offline queue
 │   │       ├── matches.ts        # Fetch matches (cursor-based pagination)
 │   │       ├── realtime.ts       # Supabase Realtime subscription + reconnection
+│   │       ├── ephemeralId.ts    # Ephemeral token fetch (pure data, no store mutations)
 │   │       └── session.ts        # Session refresh helper
 │   ├── stores/
-│   │   ├── authStore.ts          # Auth state (user, session, profile)
+│   │   ├── tokenStore.ts         # Ephemeral token state (currentToken, expiry, rotating)
+│   │   ├── waveStore.ts          # Wave state (pending waves, incoming wave tokens)
+│   │   ├── matchStore.ts         # Match state (matchesById Map, unseenCount, handles)
 │   │   ├── bleStore.ts           # BLE state (nearby peers, scanning status)
-│   │   └── waveStore.ts          # Wave state (matches, pending waves, incoming waves)
+│   │   └── authStore.ts          # Auth state (user, session, profile preferences)
 │   ├── types/
 │   │   └── index.ts              # Shared types (Gender, NearbyPeer, Match, etc.)
-│   └── utils/
-│       ├── logger.ts             # Structured logger (ble, wave, auth channels)
-│       ├── haptics.ts            # Haptic feedback
-│       ├── sound.ts              # Match chime audio
-│       ├── seedPeers.ts          # Dev-only simulated peers
-│       ├── deepLink.ts           # Social platform deep-link helpers
-│       └── platform.ts           # Platform utilities
+│   ├── constants/
+│   │   ├── colors.ts             # Dark theme color palette
+│   │   ├── icebreakers.ts        # Match conversation starters
+│   │   ├── zones.ts              # Distance zone config
+│   │   └── countries.ts          # Country codes for phone auth
+│   ├── utils/
+│   │   ├── logger.ts             # Structured logger (ble, wave, auth channels)
+│   │   ├── haptics.ts            # Haptic feedback
+│   │   ├── sound.ts              # Match chime audio
+│   │   ├── deepLink.ts           # Sanitized social platform deep-links
+│   │   ├── age.ts                # Age calculation from DOB
+│   │   ├── routeFromProfile.ts   # Profile-based routing (with 15s timeout)
+│   │   ├── seedPeers.ts          # Dev-only simulated peers
+│   │   └── platform.ts           # Platform utilities
+│   └── i18n/
+│       ├── index.ts              # i18next configuration
+│       └── locales/              # 7 language files (EN, DE, FR, ES, IT, PT, TR)
 ├── modules/
 │   └── expo-ble-peripheral/      # Custom Expo module (Swift/CoreBluetooth)
-│       ├── ios/                   # Native Swift implementation
-│       ├── src/                   # TypeScript API
-│       └── expo-module.config.json
 ├── supabase/
-│   ├── functions/                # Edge Functions
+│   ├── functions/                # 11 Edge Functions
+│   │   ├── _shared/
+│   │   │   ├── cors.ts           # Origin-aware CORS headers
+│   │   │   └── validation.ts     # Zod schemas + parseBody helper
 │   │   ├── assign-ephemeral-id/  # Ephemeral token assignment
 │   │   ├── send-wave/            # Wave + match creation (advisory locks)
 │   │   ├── remove-match/         # Match deletion + broadcast
-│   │   ├── update-location/      # PostGIS location update
-│   │   ├── cleanup/              # Expired token/wave cleanup
-│   │   ├── daily-engagement/     # Engagement push notifications
+│   │   ├── block-user/           # Block + report + match removal
+│   │   ├── update-location/      # PostGIS location update + proximity alerts
+│   │   ├── send-support-email/   # Support ticket email via Resend
+│   │   ├── cleanup/              # Expired data cleanup (cron)
+│   │   ├── daily-engagement/     # Re-engagement push notifications (cron)
 │   │   ├── delete-account/       # GDPR account deletion
-│   │   ├── auth-instagram/       # Instagram OAuth (future)
+│   │   ├── auth-instagram/       # Instagram OAuth (backend ready, UI pending)
 │   │   └── auth-callback/        # OAuth callback handler
-│   └── migrations/               # SQL migrations (4 files)
-│       ├── 00001_initial_schema.sql
-│       ├── 00002_tighten_grants.sql
-│       ├── 00003_add_age_restriction.sql
-│       ├── 00004_dob_age_check.sql
-│       ├── 00005_age_preference.sql
-│       ├── 00006_revoke_rpc_grants.sql
-│       └── 00007_add_snapchat_contact.sql
+│   └── migrations/               # 16 SQL migrations
 └── assets/                       # App icons, splash screen, sounds
 ```
 
@@ -170,31 +184,32 @@ Wave uses a custom BLE protocol for anonymous peer discovery.
 
 ```
 Service UUID: E5C00001-B5A3-F393-E0A9-E50E24DCCA9E
-Local Name:   "E:{gender_char}{16-hex-token}"
-              e.g. "E:Mabc123def456a7b8"
+Local Name:   "E:{gender_char}{age_2digits}{16-hex-token}"
+              e.g. "E:M23abc123def456a7b8"
 ```
 
-- **Gender char**: `M` (male) or `F` (female), prepended to the token
+- **Gender char**: `M` (male) or `F` (female)
+- **Age**: 2-digit age (18-99)
 - **Token**: 16-character lowercase hex string, rotated every 15 minutes
-- Legacy format `E:{16-hex-token}` (no gender) is supported for backward compatibility
+- Backward-compatible formats: `E:{gender}{token}` (17 chars) and `E:{token}` (16 chars, legacy)
 
 ### GATT Fallback (iOS Background)
 
-iOS strips the local name from BLE advertisements when the advertising app is backgrounded. Wave handles this with a GATT characteristic:
+iOS strips the local name from BLE advertisements when the advertising app is backgrounded. Wave reads the token via GATT characteristic:
 
 ```
 Characteristic UUID: E5C00002-B5A3-F393-E0A9-E50E24DCCA9E
-Value: "{gender_char}{16-hex-token}" (UTF-8, base64-encoded by BLE stack)
+Value: "{gender_char}{age_2digits}{16-hex-token}" (UTF-8)
 ```
 
-The scanner connects via GATT, reads the characteristic, and disconnects. Concurrent GATT connections are capped at 4 with a queue (max 20) to avoid exhausting iOS radio resources.
+Concurrent GATT connections capped at 4, with queue of max 20.
 
 ### Timing
 
 | Parameter | Value |
 |-----------|-------|
 | Token rotation | 15 minutes |
-| Early refresh buffer | 3 minutes (with jitter) |
+| Early refresh buffer | 3 minutes (with ±30s jitter) |
 | Scan duration | 10 seconds per cycle |
 | Scan pause | 2 seconds between cycles |
 | Peer stale timeout | 30 seconds |
@@ -205,33 +220,45 @@ The scanner connects via GATT, reads the characteristic, and disconnects. Concur
 
 ## Key Features
 
-### Radar Screen
-Live view of nearby Wave users. Each peer is shown as a deterministic anonymous avatar (emoji + color derived from their ephemeral token) with distance zone indicators (HERE / CLOSE / NEARBY) based on RSSI thresholds.
+### Store Architecture
+
+| Store | Purpose | Persisted |
+|-------|---------|-----------|
+| `tokenStore` | Ephemeral token, expiry, rotation state | No |
+| `waveStore` | Pending waves, incoming wave tokens (capped at 100) | No |
+| `matchStore` | Matches (Map for O(1) lookups), unseen count, matched tokens/handles | Yes (AsyncStorage) |
+| `bleStore` | Nearby peers (capped at 200), scanning/advertising state | No |
+| `authStore` | Session, user profile, preferences | No (Supabase JWT) |
 
 ### Wave + Match Flow
-- Tap a peer to send a wave (calls `send-wave` Edge Function)
-- Server uses PostgreSQL advisory locks with `LEAST/GREATEST` user-pair ordering for atomic match creation
-- On match: both users receive a Supabase Realtime broadcast event + push notification
-- Match celebration screen with confetti animation, haptic feedback, and match chime
-- Contact handles (Instagram/Snapchat) fetched via authenticated RPC (not broadcast for security)
-
-### Undo Wave
-Waves can be undone within a time window. The undo request goes through the same `send-wave` endpoint with `action: "undo"`.
-
-### Match History
-Paginated match list (cursor-based, 50 per page) grouped by date sections (Today / Yesterday / This Week / Older). Pull-to-refresh and infinite scroll.
+- Tap a peer to send a wave → `send-wave` Edge Function
+- Server uses PostgreSQL advisory locks for atomic match creation
+- On match: Realtime broadcast + push notification to both users
+- Match celebration screen with confetti, haptics, and chime
+- Contact handles fetched via authenticated RPC (never broadcast)
+- Recent matches (< 5 min) from server trigger celebration on app reopen
 
 ### Offline Resilience
-- **Wave queue**: Failed waves due to network loss are queued in memory and automatically retried when connectivity returns (expires after 15 min matching server-side wave lifetime)
-- **GATT queue**: When concurrent GATT reads hit the cap, additional devices are queued (max 20) and processed as slots open
-- **Realtime reconnection**: Exponential backoff (3s → 60s) with network awareness — skips reconnect attempts when device is offline
-- **Foreground reconciliation**: On every app foreground return, stale pending waves are expired and matches are re-fetched from the server
+- **Wave queue**: Staggered retry (3s between) when connectivity returns
+- **GATT queue**: 4 concurrent, 20 queued, processed as slots open
+- **Realtime reconnection**: Exponential backoff (3s → 60s), network-aware
+- **Foreground reconciliation**: Token expiry check, stale wave cleanup, server match fetch
 
-### Personal Notes
-Users can set a short personal note visible to nearby peers. Notes are resolved in batches via polling (every 30s) to minimize server load.
+### Support System
+- In-app structured ticket form (category + details, stored in DB, rate limited 5/hour)
+- Email notification to support inbox via Resend (with device diagnostics, reply-to)
+- Confirmation screen after submission
+- Direct email option (`mailto:`) as alternative channel
 
-### Age Verification
-Date of birth is collected during onboarding and verified server-side. Users under the minimum age are blocked with a dedicated screen.
+### Security
+- Zod input validation on 5 edge functions
+- Origin-aware CORS (denies unknown browser origins)
+- Sanitized deep-link URLs
+- OTP brute-force protection (5 attempts, 30s lockout)
+- Push token cleanup on sign-out
+- HTML escaping in support emails
+- Block check inside advisory lock (prevents race condition)
+- Per-trigger proximity notification cooldown
 
 ---
 
@@ -242,24 +269,18 @@ Date of birth is collected during onboarding and verified server-side. Users und
 - Node.js 18+
 - Xcode 16+ (for iOS)
 - Ruby + CocoaPods (for iOS native modules)
-- A Supabase project (Free tier works)
-- Google Cloud project with OAuth 2.0 credentials (Web + iOS client IDs)
+- A Supabase project
+- Google Cloud project with OAuth 2.0 credentials
 - EAS CLI (`npm install -g eas-cli`)
+- Resend account (for support emails)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone <repo-url>
-cd Wave
-
-# Install dependencies
+cd Wave/Wave-app
 npm install
-
-# Copy environment file and fill in your values
-cp .env.example .env
-
-# Install iOS native dependencies
+cp .env.example .env    # Fill in your values
 cd ios && pod install && cd ..
 ```
 
@@ -273,125 +294,124 @@ EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your-google-ios-client-id.apps.googleuserconten
 EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME=com.googleusercontent.apps.your-google-ios-client-id
 ```
 
+### Supabase Secrets
+
+```bash
+supabase secrets set RESEND_API_KEY=your-resend-api-key
+```
+
 ### Running
 
 ```bash
-# Start Metro bundler
-npx expo start
-
-# Run on iOS simulator
-npx expo run:ios
-
-# Run on physical device (required for BLE)
-npx expo run:ios --device
+npx expo start              # Start Metro bundler
+npx expo run:ios             # Run on iOS simulator
+npx expo run:ios --device    # Run on physical device (required for BLE)
 ```
 
 > BLE does not work in the iOS Simulator. You need a physical device to test peer discovery and advertising.
 
-### Supabase Setup
-
-1. Create a new Supabase project
-2. Run migrations in order:
-   ```bash
-   supabase db push
-   ```
-3. Deploy Edge Functions:
-   ```bash
-   supabase functions deploy
-   ```
-4. Set up `pg_cron` jobs for `cleanup` and `daily-engagement` functions (see migration files for schedule details)
-5. Enable Realtime for your project in the Supabase dashboard
-
-### Deploying
+### Database & Edge Functions
 
 ```bash
-# Build for iOS
-eas build --platform ios
-
-# Submit to App Store
-eas submit --platform ios
+supabase db push                            # Apply all migrations
+supabase functions deploy --no-verify-jwt   # Deploy all edge functions
 ```
-
----
-
-## Design System
-
-Wave uses a custom dark theme via NativeWind/Tailwind:
-
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `wave-bg` | `#0a0a0a` | App background |
-| `wave-surface` | `#1a1a2e` | Cards, modals |
-| `wave-primary` | `#6c63ff` | Primary actions, buttons |
-| `wave-accent` | `#00d4aa` | Secondary accent |
-| `wave-text` | `#e0e0e0` | Primary text |
-| `wave-muted` | `#666680` | Secondary text |
-| `wave-danger` | `#ff4757` | Destructive actions |
-| `wave-wave` | `#4ecdc4` | Wave action color |
-| `wave-match` | `#ec4899` | Match celebrations |
-
----
-
-## Database Schema
-
-Core tables (managed via migrations in `supabase/migrations/`):
-
-- **`profiles`** — User profiles (gender, DOB, Instagram/Snapchat handles, push token, location via PostGIS)
-- **`ephemeral_ids`** — Active ephemeral tokens mapped to users (rotated every 15 min)
-- **`waves`** — Pending wave records (token → token, expires after 15 min)
-- **`matches`** — Confirmed matches (user pairs, created via advisory locks)
-- **`notes`** — Personal notes attached to ephemeral tokens
-
-All tables are protected by Row Level Security. Sensitive operations (match creation, handle retrieval) use `SECURITY DEFINER` functions to enforce access control at the database level.
 
 ---
 
 ## Edge Functions
 
-| Function | Purpose |
-|----------|---------|
-| `assign-ephemeral-id` | Assigns a new ephemeral token to the authenticated user |
-| `send-wave` | Sends a wave or processes an undo; creates match if mutual wave exists |
-| `remove-match` | Deletes a match and broadcasts removal to the other user |
-| `update-location` | Updates user's PostGIS location for nearby alerts |
-| `cleanup` | Removes expired tokens and waves (called by `pg_cron`) |
-| `daily-engagement` | Sends re-engagement push notifications (called by `pg_cron`) |
-| `delete-account` | Full GDPR-compliant account deletion |
-| `auth-instagram` | Instagram OAuth flow (future) |
-| `auth-callback` | OAuth callback handler |
+| Function | Purpose | Auth | Validation |
+|----------|---------|------|------------|
+| `assign-ephemeral-id` | Assigns new ephemeral token | JWT | — |
+| `send-wave` | Wave + match creation (advisory locks) | JWT | Zod |
+| `remove-match` | Match deletion + broadcast | JWT | Zod |
+| `block-user` | Block + report + match removal | JWT | Zod |
+| `update-location` | PostGIS location + proximity alerts | JWT | Zod |
+| `send-support-email` | Support ticket email via Resend | JWT | Manual |
+| `delete-account` | GDPR account deletion (CASCADE) | JWT | — |
+| `cleanup` | Expired data cleanup | Service key | — |
+| `daily-engagement` | Re-engagement push notifications | Service key | — |
+| `auth-instagram` | Instagram OAuth (backend ready) | — | Zod |
+| `auth-callback` | OAuth redirect handler | — | — |
 
 ---
 
-## Roadmap
+## Database Schema
 
-### Near-Term
+Core tables (16 migrations in `supabase/migrations/`):
 
-- [ ] **Test Suite** — Unit tests for BLE protocol parsing, store logic, and Edge Functions. Integration tests for wave/match flow.
-- [ ] **Sentry Integration** — Crash reporting and performance monitoring. Replace `logger` calls with Sentry breadcrumbs for production diagnostics.
-- [ ] **Remove `seedPeers.ts`** — Development-only simulated peers. Strip from production bundle or gate behind `__DEV__`.
-- [ ] **Privacy Policy & Terms of Service** — Static website (required for App Store submission and GDPR compliance).
+- **`profiles`** — User profiles (gender, DOB, handles, preferences, PostGIS location)
+- **`ephemeral_ids`** — Active ephemeral tokens (rotated every 15 min)
+- **`waves`** — Pending wave records (expires after 15 min)
+- **`matches`** — Confirmed matches (unique user pairs via LEAST/GREATEST)
+- **`blocks`** — Bidirectional user blocks
+- **`reports`** — User reports (admin-only via service_role)
+- **`support_tickets`** — In-app support requests (rate limited 5/hour)
+- **`push_tokens`** — Expo push notification tokens
+- **`proximity_notifications`** — Per-trigger cooldown tracking
+- **`engagement_notifications`** — Daily push cooldown tracking
+- **`push_receipts`** — Deferred Expo receipt checking
 
-### Mid-Term
+All tables protected by Row Level Security. Sensitive operations use `SECURITY DEFINER` functions with `auth.uid()` validation.
 
-- [ ] **Instagram OAuth** — Replace Google Sign In with Instagram as the primary auth method. Users authenticate directly with their Instagram account, eliminating the manual handle entry step.
-- [ ] **Android BLE Peripheral** — Implement Android-side BLE peripheral advertising (currently iOS-only via `expo-ble-peripheral`). The central/scanner side already works on Android.
-### Long-Term
+---
 
-- [ ] **Supabase Pro Upgrade** — Required for scaling beyond 200 concurrent Realtime connections and 2 concurrent Edge Functions. Enables connection pooling (PgBouncer) and higher invocation limits.
-- [ ] **Monetization** — Premium features (e.g., extended wave range, see who waved first, priority in radar). Subscription or one-time purchase model.
-- [ ] **Horizontal Scaling** — Partition ephemeral IDs by region, add Redis caching layer for hot paths, implement edge deployment for Edge Functions.
-- [ ] **Location-Based Features** — Venue/event mode, heatmaps of Wave activity, location-gated waves.
+## Design System
+
+Dark theme via NativeWind/Tailwind:
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `wave-bg` | `#0a0a0a` | App background |
+| `wave-surface` | `#1a1a2e` | Cards, modals |
+| `wave-primary` | `#6c63ff` | Primary actions |
+| `wave-accent` | `#00d4aa` | Secondary accent |
+| `wave-text` | `#e0e0e0` | Primary text |
+| `wave-muted` | `#8585a0` | Secondary text (WCAG AA) |
+| `wave-danger` | `#ff4757` | Destructive actions |
+| `wave-wave` | `#4ecdc4` | Wave action |
+| `wave-match` | `#ec4899` | Match celebrations |
+
+---
+
+## TODO
+
+### Before First Build
+- [x] ~~Integrate Sentry for crash reporting~~ ✅ Done
+- [x] ~~Deploy website to Vercel~~ ✅ Live at wave-website-dun.vercel.app
+- [x] ~~APS entitlement~~ ✅ Dynamic — auto-switches dev/production based on EAS build profile
+- [ ] Run `npx sentry-cli login` (one-time — enables source map upload for readable crash traces)
+
+### Before App Store Submission
+- [ ] Buy `wave-app.com` domain → connect to Vercel → update Privacy Policy & Terms URLs
+- [ ] Verify `wave-app.com` in Resend → update sender from `onboarding@resend.dev` to `support@wave-app.com`
+- [ ] Update `SUPPORT_EMAIL` in `send-support-email` edge function from dev email to `support@wave-app.com`
+- [ ] Replace download button placeholders with real App Store / Play Store URLs
+- [ ] Prepare App Store assets: screenshots, description, keywords, promotional text
+- [ ] Fill in App Store privacy nutrition labels (data collection declarations)
+- [ ] Add basic analytics (app opens, waves sent, matches created, DAU)
+
+### Backlog
+- [ ] **Android BLE Peripheral** — Implement advertising on Android (scanning already works)
+- [ ] **Instagram OAuth** — Wire backend (ready) into login UI
+- [ ] **Monetization** — Premium features, subscription model
+- [ ] **Test Suite** — Unit tests for stores, services, BLE parsing; integration tests for wave/match
+- [ ] **Account Linking** — Let users add multiple auth methods to one account
+- [ ] **Admin Dashboard** — Moderation interface for reports and tickets
+- [ ] **Supabase Pro** — Scale beyond free tier limits (200 Realtime connections, 2 concurrent Edge Functions)
 
 ---
 
 ## Current Limitations
 
 - **iOS only** for BLE peripheral advertising (scanner works on both platforms)
-- **Supabase Free tier** limits: 200 concurrent Realtime connections, 2 concurrent Edge Functions, 500K function invocations/month
-- **No test suite** — All testing is manual
-- **No crash reporting** — Errors are logged to console only
-- **BLE range** — Effective range is ~30 meters (hardware dependent), with best results under 10 meters
-- **No account linking** — Apple, Google, and Phone sign-ins each create separate Supabase accounts. A user who signs in with different methods will have distinct accounts with separate matches and profile data.
+- **Supabase Free tier** limits: 200 concurrent Realtime connections, 2 concurrent Edge Functions
+- **No automated tests** — All testing is manual
+- **Crash reporting** — Sentry integrated (errors + breadcrumbs + user/device context), source maps upload pending first production build
+- **BLE range** — Effective ~30 meters (hardware dependent), best under 10 meters
+- **No account linking** — Apple, Google, and Phone sign-ins create separate accounts
+- **Support emails** sent from `onboarding@resend.dev` until domain verification (may hit spam)
 
 ---
 

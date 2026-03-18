@@ -21,7 +21,7 @@ export async function fetchAndRoute(router: Router): Promise<boolean> {
     new Promise<null>((resolve) => {
       setTimeout(() => {
         if (!didResolve) {
-          logger.error("Profile fetch timed out");
+          logger.warn("Profile fetch timed out");
         }
         resolve(null);
       }, FETCH_TIMEOUT_MS);
@@ -81,10 +81,10 @@ export async function fetchAndRoute(router: Router): Promise<boolean> {
 
   // Background syncs (non-blocking)
   syncTimezoneAndActivity().catch((err) =>
-    logger.error("Timezone/activity sync failed", err),
+    logger.warn("Timezone/activity sync failed", err),
   );
   fetchMatchesFromServer().catch((err) =>
-    logger.error("Background match fetch failed", err),
+    logger.warn("Background match fetch failed", err),
   );
 
   logger.auth("Session valid, navigating to radar");

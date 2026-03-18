@@ -4,11 +4,22 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as Sentry from "@sentry/react-native";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/services/supabase";
 import { logger } from "@/utils/logger";
 import { COLORS } from "@/constants/colors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !__DEV__,
+  tracesSampleRate: 0.2,
+  sendDefaultPii: false,
+  enableAutoSessionTracking: true,
+  // Max breadcrumbs retained per event (default 100, keep it tight)
+  maxBreadcrumbs: 50,
+});
 
 export default function RootLayout() {
   const setSession = useAuthStore((s) => s.setSession);
@@ -22,6 +33,14 @@ export default function RootLayout() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       logger.auth("Auth state changed", { event, hasSession: !!session });
+
+      // Tag Sentry with user context for production debugging.
+      // Uses user ID only (no email/phone) to respect privacy.
+      if (session?.user) {
+        Sentry.setUser({ id: session.user.id });
+      } else {
+        Sentry.setUser(null);
+      }
     });
 
     return () => subscription.unsubscribe();

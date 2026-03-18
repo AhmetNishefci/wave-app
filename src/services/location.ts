@@ -5,6 +5,11 @@ import { logger } from "@/utils/logger";
 /** Timestamp (ms) when the rate limit window expires. Prevents wasteful calls. */
 let rateLimitedUntil = 0;
 
+/** Reset module-level caches. Called on sign-out to prevent cross-session leakage. */
+export function resetLocationCache(): void {
+  rateLimitedUntil = 0;
+}
+
 export type LocationPermissionResult = "granted" | "denied" | "blocked";
 
 /**

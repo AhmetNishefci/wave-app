@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from "react-native";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
+import { useTokenStore } from "@/stores/tokenStore";
 import { useAuthStore } from "@/stores/authStore";
 import { fetchNewToken } from "@/services/wave/ephemeralId";
 import { fetchMatchesFromServer } from "@/services/wave/matches";
@@ -40,11 +41,14 @@ export function useBleLifecycle() {
           wasRunning.current = false;
 
           // Check if ephemeral token expired while backgrounded
-          const { tokenExpiresAt } = useWaveStore.getState();
+          const { tokenExpiresAt } = useTokenStore.getState();
           if (!tokenExpiresAt || tokenExpiresAt < Date.now()) {
             logger.wave("Token expired during background — fetching new one before restarting scan");
             fetchNewToken().then((result) => {
               if (result) {
+                // Apply token to stores (O3 — caller-side updates)
+                const expiresAtMs = new Date(result.expires_at).getTime();
+                useTokenStore.getState().setToken(result.token, expiresAtMs);
                 waveBleManager.rotateToken(result.token).catch((e) =>
                   logger.error("Failed to rotate token on foreground", e),
                 );

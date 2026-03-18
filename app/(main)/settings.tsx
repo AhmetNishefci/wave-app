@@ -6,12 +6,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
+import { useTokenStore } from "@/stores/tokenStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { useAuthStore } from "@/stores/authStore";
 import { signOut } from "@/services/auth";
 import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference, syncLocaleToServer } from "@/services/profile";
 import { getBlockedUsers, unblockUser } from "@/services/wave/waves";
 import { getFakeBlockedUsers } from "@/utils/seedPeers";
-import { requestLocationPermission, hasLocationPermission, isLocationBlocked } from "@/services/location";
+import { requestLocationPermission, hasLocationPermission, isLocationBlocked, resetLocationCache } from "@/services/location";
 import { supabase } from "@/services/supabase";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { impactLight } from "@/utils/haptics";
@@ -42,7 +44,7 @@ const PREFERENCE_OPTIONS: { value: GenderPreference; labelKey: string }[] = [
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const { session, dateOfBirth, instagramHandle, setInstagramHandle, snapchatHandle, setSnapchatHandle, gender, genderPreference, setGenderPreference, agePreferenceMin, agePreferenceMax, setAgePreference, note, setNote, nearbyAlertsEnabled, setNearbyAlertsEnabled, dailyPushesEnabled, setDailyPushesEnabled } = useAuthStore();
-  const totalMatches = useWaveStore((s) => s.matches.length);
+  const totalMatches = useMatchStore((s) => s.matchesById.size);
   const rawEmail = session?.user?.email ?? null;
   const userEmail = rawEmail?.includes("privaterelay.appleid.com")
     ? t("settings.hiddenApple")
@@ -352,9 +354,12 @@ export default function SettingsScreen() {
                 return;
               }
 
-              // Clean up local state
+              // Clean up local state + module caches
               await waveBleManager.stop();
+              resetLocationCache();
               useWaveStore.getState().reset();
+              useTokenStore.getState().reset();
+              useMatchStore.getState().reset();
               useBleStore.getState().reset();
               useAuthStore.getState().reset();
               await supabase.auth.signOut();
@@ -725,7 +730,7 @@ export default function SettingsScreen() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity onPress={() => setEditingNote(true)} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => { setNoteInput(note ?? ""); setEditingNote(true); }} activeOpacity={0.7}>
             <View className="flex-row justify-between items-center py-1.5">
               <Text className="text-wave-muted text-sm">{t("settings.noteSection")}</Text>
               <View className="flex-row items-center">

@@ -53,6 +53,13 @@ export default function PhoneLoginScreen() {
   const sendingRef = useRef(false);
   const verifyingRef = useRef(false);
 
+  // OTP brute-force protection: lock out after 5 failed attempts for 30s
+  const MAX_OTP_ATTEMPTS = 5;
+  const OTP_LOCKOUT_MS = 30_000;
+  const [otpAttempts, setOtpAttempts] = useState(0);
+  const [otpLockedUntil, setOtpLockedUntil] = useState(0);
+  const isOtpLocked = Date.now() < otpLockedUntil;
+
   // Refs
   const otpInputRef = useRef<TextInput>(null);
   const phoneInputRef = useRef<TextInput>(null);
@@ -93,6 +100,7 @@ export default function PhoneLoginScreen() {
 
   const handleVerifyCode = async () => {
     if (verifyingRef.current || otpCode.length !== OTP_LENGTH) return;
+    if (Date.now() < otpLockedUntil) return;
     verifyingRef.current = true;
     impactMedium();
     setVerifying(true);
@@ -109,10 +117,16 @@ export default function PhoneLoginScreen() {
     } else {
       setVerifying(false);
       verifyingRef.current = false;
-      if (error) {
+      const nextAttempts = otpAttempts + 1;
+      setOtpAttempts(nextAttempts);
+      if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+        setOtpLockedUntil(Date.now() + OTP_LOCKOUT_MS);
+        setOtpAttempts(0);
+        Alert.alert(t("phoneLogin.verificationFailed"), t("phoneLogin.tooManyAttempts"));
+      } else if (error) {
         Alert.alert(t("phoneLogin.verificationFailed"), error);
-        setOtpCode("");
       }
+      setOtpCode("");
     }
   };
 

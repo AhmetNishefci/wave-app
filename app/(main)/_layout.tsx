@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { waveBleManager } from "@/services/ble/bleManager";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import * as Notifications from "expo-notifications";
 import { useBleLifecycle } from "@/hooks/useBleLifecycle";
 import { useEphemeralRotation } from "@/hooks/useEphemeralRotation";
@@ -14,10 +14,8 @@ import { COLORS } from "@/constants/colors";
 
 export default function MainLayout() {
   const router = useRouter();
-  const latestUnseenMatch = useWaveStore((s) => s.latestUnseenMatch);
-  const unseenCount = useWaveStore(
-    (s) => s.matches.filter((m) => !m.seen).length,
-  );
+  const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
+  const unseenCount = useMatchStore((s) => s.unseenCount);
 
   // Sync app icon badge with unseen match count
   useEffect(() => {
@@ -39,10 +37,10 @@ export default function MainLayout() {
     // Recover unseen matches from persisted storage (M3 fix).
     // If the app crashed or was killed before the user saw the match
     // celebration, re-trigger it on next launch.
-    const matches = useWaveStore.getState().matches;
+    const matches = useMatchStore.getState().getMatchesArray();
     const unseenMatch = matches.find((m) => !m.seen);
-    if (unseenMatch && !useWaveStore.getState().latestUnseenMatch) {
-      useWaveStore.setState({ latestUnseenMatch: unseenMatch });
+    if (unseenMatch && !useMatchStore.getState().latestUnseenMatch) {
+      useMatchStore.setState({ latestUnseenMatch: unseenMatch });
     }
 
     return () => {

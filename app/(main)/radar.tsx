@@ -15,6 +15,8 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { impactMedium, impactLight, notifySuccess, notifyError } from "@/utils/haptics";
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
+import { useTokenStore } from "@/stores/tokenStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { useAuthStore } from "@/stores/authStore";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { sendWave, undoWave } from "@/services/wave/waves";
@@ -59,9 +61,9 @@ export default function RadarScreen() {
     error,
     proximityAlertPending,
   } = useBleStore();
-  const { currentToken } = useWaveStore();
+  const { currentToken } = useTokenStore();
   const rawIncomingWaveTokens = useWaveStore((s) => s.incomingWaveTokens);
-  const matchedTokens = useWaveStore((s) => s.matchedTokens);
+  const matchedTokens = useMatchStore((s) => s.matchedTokens);
   const genderPreference = useAuthStore((s) => s.genderPreference);
   const agePreferenceMin = useAuthStore((s) => s.agePreferenceMin);
   const agePreferenceMax = useAuthStore((s) => s.agePreferenceMax);
@@ -220,11 +222,11 @@ export default function RadarScreen() {
         return;
       }
 
-      let token = useWaveStore.getState().currentToken;
+      let token = useTokenStore.getState().currentToken;
       if (!token) {
         for (let i = 0; i < 16; i++) {
           await new Promise((r) => setTimeout(r, 500));
-          token = useWaveStore.getState().currentToken;
+          token = useTokenStore.getState().currentToken;
           if (token) break;
         }
       }
@@ -303,7 +305,8 @@ export default function RadarScreen() {
       setToast({ message: t("radar.couldntWave"), variant: "error" });
     } else if (result.status === "already_matched") {
       store.removePendingWave(peer.ephemeralToken);
-      store.addMatchedToken(peer.ephemeralToken, {
+      if (result.match) useMatchStore.getState().addMatch(result.match);
+      useMatchStore.getState().addMatchedToken(peer.ephemeralToken, {
         instagram: result.match?.instagramHandle,
         snapchat: result.match?.snapchatHandle,
       });
@@ -314,7 +317,8 @@ export default function RadarScreen() {
       setToast({ message: t("radar.waveTooFast"), variant: "error" });
     } else if (result.status === "match") {
       store.removePendingWave(peer.ephemeralToken);
-      store.addMatchedToken(peer.ephemeralToken, {
+      if (result.match) useMatchStore.getState().addMatch(result.match);
+      useMatchStore.getState().addMatchedToken(peer.ephemeralToken, {
         instagram: result.match?.instagramHandle,
         snapchat: result.match?.snapchatHandle,
       });
@@ -323,7 +327,7 @@ export default function RadarScreen() {
     } else if (result.status === "pending") {
       // Store userId → token mapping so realtime match events can bridge to radar
       if (result.targetUserId) {
-        store.setPendingWaveUser(result.targetUserId, peer.ephemeralToken);
+        useMatchStore.getState().setPendingWaveUser(result.targetUserId, peer.ephemeralToken);
       }
       setToast({ message: t("radar.waveSentToast") });
     }
@@ -337,7 +341,8 @@ export default function RadarScreen() {
     const success = await undoWave(targetToken);
     undoingRef.current = null;
     if (success) {
-      useWaveStore.getState().removePendingWaveByToken(targetToken);
+      useWaveStore.getState().removePendingWave(targetToken);
+      useMatchStore.getState().removePendingWaveByToken(targetToken);
       setToast({ message: t("radar.waveUndoneToast") });
     } else {
       notifyError();

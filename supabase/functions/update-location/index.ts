@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { updateLocationSchema, parseBody } from "../_shared/validation.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -23,7 +19,6 @@ const PUSH_STRINGS: Record<string, Record<string, string>> = {
   it: { proximityTitle: "Wave 👋", proximityBody: "Un utente Wave è nelle vicinanze — apri l'app!" },
   pt: { proximityTitle: "Wave 👋", proximityBody: "Um usuário Wave está por perto — abra o app!" },
   tr: { proximityTitle: "Wave 👋", proximityBody: "Yakınında bir Wave kullanıcısı var — uygulamayı aç!" },
-  sq: { proximityTitle: "Wave 👋", proximityBody: "Një përdorues Wave është afër — hap aplikacionin!" },
 };
 
 function getPushString(locale: string | null, key: string): string {
@@ -40,9 +35,8 @@ function getPushString(locale: string | null, key: string): string {
  * Body: { latitude: number, longitude: number }
  */
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     // Authenticate user
@@ -50,7 +44,7 @@ serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -72,40 +66,33 @@ serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
-    // Parse body
+    // Parse and validate request body with Zod
     let latitude: number;
     let longitude: number;
     try {
-      const body = await req.json();
-      latitude = body.latitude;
-      longitude = body.longitude;
+      const rawBody = await req.json();
+      const parsed = parseBody(rawBody, updateLocationSchema);
+      if (parsed.error) {
+        return new Response(
+          JSON.stringify({ error: parsed.error }),
+          {
+            status: 400,
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          },
+        );
+      }
+      latitude = parsed.data.latitude;
+      longitude = parsed.data.longitude;
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
-      return new Response(
-        JSON.stringify({ error: "Invalid coordinates" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -126,7 +113,7 @@ serve(async (req: Request) => {
           JSON.stringify({ error: "Rate limited", retry_after_ms: 30_000 - elapsed }),
           {
             status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
           },
         );
       }
@@ -148,7 +135,7 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "Failed to update location" }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -172,7 +159,7 @@ serve(async (req: Request) => {
         JSON.stringify({ status: "ok", nearby_count: 0, notified_count: 0 }),
         {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -184,7 +171,7 @@ serve(async (req: Request) => {
         JSON.stringify({ status: "ok", nearby_count: 0, notified_count: 0 }),
         {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -306,14 +293,14 @@ serve(async (req: Request) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

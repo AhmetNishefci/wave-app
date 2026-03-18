@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { sendWaveSchema, parseBody } from "../_shared/validation.ts";
 
 // Module-level singleton to reuse across warm invocations
 const adminClient = createClient(
@@ -23,7 +19,7 @@ const PUSH_STRINGS: Record<string, Record<string, string>> = {
     waveBodyWithNote: "\"{{note}}\" waved at you — open Wave to wave back",
   },
   de: {
-    matchTitle: "It's a Match! 🎉",
+    matchTitle: "Es ist ein Match! 🎉",
     matchBody: "Jemand hat zurückgewaved! Öffne Wave um zu sehen wer.",
     waveTitle: "Jemand hat dir zugewaved! 👋",
     waveBody: "Öffne Wave und wave zurück",
@@ -64,13 +60,6 @@ const PUSH_STRINGS: Record<string, Record<string, string>> = {
     waveBody: "Wave'i aç ve karşılık ver",
     waveBodyWithNote: "\"{{note}}\" sana wave yaptı — Wave'i aç ve karşılık ver",
   },
-  sq: {
-    matchTitle: "Është një Match! 🎉",
-    matchBody: "Dikush të ktheu wave! Hap Wave për të parë kush.",
-    waveTitle: "Dikush të bëri wave! 👋",
-    waveBody: "Hap Wave për t'ia kthyer",
-    waveBodyWithNote: "\"{{note}}\" të bëri wave — hap Wave për t'ia kthyer",
-  },
 };
 
 function getPushString(locale: string | null, key: string): string {
@@ -79,9 +68,8 @@ function getPushString(locale: string | null, key: string): string {
 }
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     // Authenticate the user
@@ -89,7 +77,7 @@ serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -111,48 +99,33 @@ serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
-    // Parse request body
-    let target_ephemeral_token: string | undefined;
-    let action: string | undefined;
+    // Parse and validate request body with Zod (O7)
+    let target_ephemeral_token: string;
+    let action: "undo" | null | undefined;
     try {
-      const body = await req.json();
-      target_ephemeral_token = body.target_ephemeral_token;
-      action = body.action;
+      const rawBody = await req.json();
+      const parsed = parseBody(rawBody, sendWaveSchema);
+      if (parsed.error) {
+        return new Response(
+          JSON.stringify({ error: parsed.error }),
+          {
+            status: 400,
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          },
+        );
+      }
+      target_ephemeral_token = parsed.data.target_ephemeral_token;
+      action = parsed.data.action;
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    if (
-      !target_ephemeral_token ||
-      typeof target_ephemeral_token !== "string" ||
-      !/^[0-9a-f]{16}$/.test(target_ephemeral_token)
-    ) {
-      return new Response(
-        JSON.stringify({ error: "Invalid target_ephemeral_token" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // Validate action is a known value (undefined/null = send wave, "undo" = undo)
-    if (action !== undefined && action !== null && action !== "undo") {
-      return new Response(
-        JSON.stringify({ error: "Invalid action" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -183,14 +156,14 @@ serve(async (req: Request) => {
         console.error("Undo wave delete error:", delError);
         return new Response(JSON.stringify({ status: "error" }), {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
       if (!deleted || deleted.length === 0) {
         return new Response(JSON.stringify({ status: "error", reason: "undo_expired" }), {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
@@ -226,7 +199,7 @@ serve(async (req: Request) => {
 
       return new Response(JSON.stringify({ status: "undone" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -244,7 +217,7 @@ serve(async (req: Request) => {
       console.error("RPC error:", rpcError);
       return new Response(JSON.stringify({ error: "Match check failed" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -421,13 +394,13 @@ serve(async (req: Request) => {
         ? { instagram_handle: matchedInstagramHandle, snapchat_handle: matchedSnapchatHandle } : {}),
     }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/stores/authStore";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
 
@@ -54,7 +54,7 @@ export function useNotifications() {
           // match screen. We do NOT call router.push here — that would
           // cause a double navigation (both this handler and MainLayout
           // would push /(main)/match, stacking two screens).
-          const store = useWaveStore.getState();
+          const store = useMatchStore.getState();
           store.addMatch({
             matchId: data.match_id as string,
             matchedUserId: (data.matched_user_id as string) ?? "unknown",

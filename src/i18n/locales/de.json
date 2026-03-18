@@ -44,6 +44,7 @@
     "noCountries": "Keine Länder gefunden",
     "couldntSendCode": "Code konnte nicht gesendet werden",
     "verificationFailed": "Bestätigung fehlgeschlagen",
+    "tooManyAttempts": "Zu viele Fehlversuche. Bitte warte 30 Sekunden, bevor du es erneut versuchst.",
     "couldntResend": "Erneut senden fehlgeschlagen",
     "goBack": "Zurück",
     "countryCode": "Landesvorwahl {{dial}}",
@@ -171,7 +172,7 @@
   },
 
   "match": {
-    "title": "It's a Match!",
+    "title": "Es ist ein Match!",
     "subtitle": "Ihr habt euch gegenseitig gewaved",
     "stillNearby": "Noch in der Nähe",
     "firstMatch": "Dein erstes Match!",
@@ -363,7 +364,7 @@
   },
 
   "shareCard": {
-    "title": "It's a Match!",
+    "title": "Es ist ein Match!",
     "subtitle": "Wir haben uns gegenseitig gewaved 👋",
     "brand": "WAVE",
     "tagline": "Lerne Leute in deiner Nähe kennen"

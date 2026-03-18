@@ -2,7 +2,7 @@ import { View, Text, TextInput, SectionList, TouchableOpacity, Share, Alert, Act
 import { useMemo, useEffect, useRef, useCallback, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { removeMatchFromServer, blockUser } from "@/services/wave/waves";
 import { fetchMatchesFromServer, loadMoreMatches } from "@/services/wave/matches";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
@@ -36,10 +36,8 @@ function groupByDate(matches: Match[]) {
     { title: i18n.t("history.earlier"), data: [] },
   ];
 
-  // Sort newest first
-  const sorted = [...matches].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+  // matches are already sorted newest-first by matchStore.getMatchesArray()
+  const sorted = matches;
 
   for (const match of sorted) {
     const d = new Date(match.createdAt);
@@ -61,7 +59,7 @@ function groupByDate(matches: Match[]) {
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
-  const matches = useWaveStore((s) => s.matches);
+  const matches = useMatchStore((s) => s.getMatchesArray());
   const nearbyMatchIds = useNearbyMatchIds();
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -122,7 +120,7 @@ export default function HistoryScreen() {
       (m) => !m.seen && !seenIdsRef.current.has(m.matchId),
     );
     if (unseen.length > 0) {
-      const store = useWaveStore.getState();
+      const store = useMatchStore.getState();
       for (const m of unseen) {
         store.markMatchSeen(m.matchId);
         seenIdsRef.current.add(m.matchId);
@@ -380,7 +378,9 @@ function MatchActionSheet({
     setBlocking(false);
     setShowBlockConfirm(false);
     onClose();
-    if (!success) {
+    if (success) {
+      useMatchStore.getState().removeMatch(match.matchId);
+    } else {
       Alert.alert(t("common.error"), t("history.blockError"));
     }
   };
@@ -401,6 +401,7 @@ function MatchActionSheet({
     setReportDetails("");
     onClose();
     if (success) {
+      useMatchStore.getState().removeMatch(match.matchId);
       Alert.alert("", t("history.reportConfirm"));
     } else {
       Alert.alert(t("common.error"), t("history.reportError"));
@@ -436,7 +437,9 @@ function MatchActionSheet({
               setRemoving(false);
               setShowRemoveConfirm(false);
               onClose();
-              if (!success) {
+              if (success) {
+                useMatchStore.getState().removeMatch(match.matchId);
+              } else {
                 Alert.alert(t("common.error"), t("history.removeError"));
               }
             }}

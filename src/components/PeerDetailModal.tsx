@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SocialActionRow } from "@/components/SocialActionRow";
 import { ZONE_CONFIG } from "@/constants/zones";
@@ -25,8 +25,8 @@ export function PeerDetailModal({
   const zoneLabel = ZONE_CONFIG[zone].label;
   const zoneColor = ZONE_CONFIG[zone].color;
   const freshness = getTimeSince(peer.lastSeen);
-  const isMatched = useWaveStore((s) => s.matchedTokens.has(peer.ephemeralToken));
-  const matchedHandles = useWaveStore((s) => s.matchedHandles.get(peer.ephemeralToken));
+  const isMatched = useMatchStore((s) => s.matchedTokens.has(peer.ephemeralToken));
+  const matchedHandles = useMatchStore((s) => s.matchedHandles.get(peer.ephemeralToken));
   const instagramHandle = matchedHandles?.instagram;
   const snapchatHandle = matchedHandles?.snapchat;
 

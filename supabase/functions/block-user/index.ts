@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { blockUserSchema, parseBody } from "../_shared/validation.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -28,9 +24,8 @@ const adminClient = createClient(
  * }
  */
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     // Authenticate
@@ -38,7 +33,7 @@ serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -56,35 +51,35 @@ serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
-    // Parse body
-    let blocked_id: string | undefined;
-    let display_name: string | undefined;
-    let match_id: string | undefined;
-    let reason: string | undefined;
-    let details: string | undefined;
+    // Parse and validate request body with Zod
+    let blocked_id: string;
+    let display_name: string | null | undefined;
+    let match_id: string | null | undefined;
+    let reason: string | null | undefined;
+    let details: string | null | undefined;
 
     try {
-      const body = await req.json();
-      blocked_id = body.blocked_id;
-      display_name = body.display_name;
-      match_id = body.match_id;
-      reason = body.reason;
-      details = body.details;
+      const rawBody = await req.json();
+      const parsed = parseBody(rawBody, blockUserSchema);
+      if (parsed.error) {
+        return new Response(JSON.stringify({ error: parsed.error }), {
+          status: 400,
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      blocked_id = parsed.data.blocked_id;
+      display_name = parsed.data.display_name;
+      match_id = parsed.data.match_id;
+      reason = parsed.data.reason;
+      details = parsed.data.details;
     } catch {
       return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!blocked_id || typeof blocked_id !== "string") {
-      return new Response(JSON.stringify({ error: "Invalid blocked_id" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -92,7 +87,7 @@ serve(async (req: Request) => {
     if (blocked_id === user.id) {
       return new Response(JSON.stringify({ error: "Cannot block yourself" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -112,7 +107,7 @@ serve(async (req: Request) => {
       console.error("Failed to create block:", blockError);
       return new Response(JSON.stringify({ error: "Failed to block user" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -194,14 +189,14 @@ serve(async (req: Request) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

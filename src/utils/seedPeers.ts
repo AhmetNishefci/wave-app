@@ -1,5 +1,6 @@
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import type { NearbyPeer } from "@/types";
 
 let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
@@ -157,8 +158,8 @@ export function seedFakePeers(): void {
   waveStore.addIncomingWaveToken(fakePeers[18].ephemeralToken); // CLOSE zone
   waveStore.addIncomingWaveToken(fakePeers[25].ephemeralToken); // CLOSE zone
   waveStore.addPendingWave(fakePeers[4].ephemeralToken);
-  waveStore.addMatchedToken(fakePeers[8].ephemeralToken, { instagram: "emma.w" });
-  waveStore.addMatchedToken(fakePeers[12].ephemeralToken, { instagram: "jake_adventures", snapchat: "jake_snap" });
+  useMatchStore.getState().addMatchedToken(fakePeers[8].ephemeralToken, { instagram: "emma.w" });
+  useMatchStore.getState().addMatchedToken(fakePeers[12].ephemeralToken, { instagram: "jake_adventures", snapchat: "jake_snap" });
 }
 
 /**
@@ -166,7 +167,7 @@ export function seedFakePeers(): void {
  * Creates a variety of matches: Instagram-only, Snapchat-only, both, and no socials.
  */
 export function seedFakeMatches(): void {
-  const store = useWaveStore.getState();
+  const store = useMatchStore.getState();
   const now = Date.now();
 
   const fakeMatches = [
@@ -192,7 +193,7 @@ export function seedFakeMatches(): void {
  * Creates an unseen match which MainLayout detects and navigates to /(main)/match.
  */
 export function triggerFakeMatch(): void {
-  const store = useWaveStore.getState();
+  const store = useMatchStore.getState();
   const id = `fake-match-live-${Date.now()}`;
 
   store.addMatch({
@@ -236,7 +237,7 @@ export function getFakeBlockedUsers() {
  * DEV ONLY: Clear all fake matches.
  */
 export function clearFakeMatches(): void {
-  useWaveStore.getState().clearMatches();
+  useMatchStore.getState().clearMatches();
 }
 
 /**
@@ -250,5 +251,5 @@ export function clearFakePeers(): void {
   useBleStore.getState().clearPeers();
   useWaveStore.getState().clearAllPendingWaves();
   useWaveStore.getState().resetIncomingWaveTokens();
-  useWaveStore.getState().clearMatchedTokens();
+  useMatchStore.getState().clearMatchedTokens();
 }

@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -13,24 +8,6 @@ const adminClient = createClient(
 );
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-
-// ─── Localized push notification strings ─────────────────────────────
-const PUSH_STRINGS: Record<string, Record<string, string>> = {
-  en: {
-    matchTitle: "It's a Match! \u{1F389}",
-    matchBody: "Someone waved back! Open Wave to see who.",
-    waveTitle: "Someone waved at you! \u{1F44B}",
-    waveBody: "Open Wave to wave back",
-    proximityTitle: "Wave \u{1F44B}",
-    proximityBody: "A Wave user is nearby \u2014 open the app to connect!",
-  },
-  // More languages added here when translated
-};
-
-function getPushString(locale: string | null, key: string): string {
-  const lang = locale?.substring(0, 2) ?? "en";
-  return PUSH_STRINGS[lang]?.[key] ?? PUSH_STRINGS.en[key];
-}
 
 /** Minimum hours between engagement pushes for the same user.
  *  Set to 24h — broad enough to also suppress after organic wave/match
@@ -114,9 +91,8 @@ interface EligibleUser {
  * 5. Record sends for cooldown tracking
  */
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightIfNeeded(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     // Auth check: only accept service role key (cron sends it via vault)
@@ -128,7 +104,7 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "Unauthorized" }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -154,7 +130,7 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "Query failed", detail: queryError.message }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -167,7 +143,7 @@ serve(async (req: Request) => {
         JSON.stringify({ status: "ok", eligible: 0, sent: 0 }),
         {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -306,14 +282,14 @@ serve(async (req: Request) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

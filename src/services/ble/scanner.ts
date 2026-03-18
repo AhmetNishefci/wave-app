@@ -7,9 +7,9 @@ import {
   GATT_CONNECT_TIMEOUT_MS,
   GATT_READ_COOLDOWN_MS,
 } from "./constants";
+import { parseBlePayload, type BlePayload } from "./parsePayload";
 import { useBleStore } from "@/stores/bleStore";
 import type { NearbyPeer, Gender } from "@/types";
-import { genderCharToGender } from "@/types";
 import { logger } from "@/utils/logger";
 
 // Cap concurrent GATT connections to avoid exhausting iOS limit (M8 fix)
@@ -46,83 +46,14 @@ function createFreshSession(): ScannerSession {
   };
 }
 
-interface BlePayload {
-  token: string;
-  gender: Gender | null;
-  age: number | null;
-}
-
 /**
  * Extract the ephemeral token, gender, and age from a device's local name.
- * Formats (after "E:" prefix):
- *   19 chars: "{gender}{age2digits}{16-hex-token}" (e.g. "E:M23abc123def456a7b8")
- *   17 chars: "{gender}{16-hex-token}" (e.g. "E:Mabc123def456a7b8")
- *   16 chars: "{16-hex-token}" (legacy, no gender/age)
+ * Strips the "E:" prefix, then delegates to the shared parser.
  */
 function extractPayload(device: Device): BlePayload | null {
   const name = device.localName ?? device.name;
   if (!name || !name.startsWith(LOCAL_NAME_PREFIX)) return null;
-  const raw = name.slice(LOCAL_NAME_PREFIX.length);
-
-  // New format: gender char + 2-digit age + 16 hex chars (19 total)
-  if (raw.length === 19) {
-    const gender = genderCharToGender(raw[0]);
-    const ageStr = raw.slice(1, 3);
-    const token = raw.slice(3).toLowerCase();
-    if (/^\d{2}$/.test(ageStr) && /^[0-9a-f]{16}$/.test(token)) {
-      return { token, gender, age: parseInt(ageStr, 10) };
-    }
-  }
-
-  // Gender-only format: gender char + 16 hex chars (17 total)
-  if (raw.length === 17) {
-    const gender = genderCharToGender(raw[0]);
-    const token = raw.slice(1).toLowerCase(); // Case-insensitive (M11 fix)
-    if (/^[0-9a-f]{16}$/.test(token)) {
-      return { token, gender, age: null };
-    }
-  }
-
-  // Legacy format: 16 hex chars (no gender/age)
-  const rawLower = raw.toLowerCase(); // Case-insensitive (M11 fix)
-  if (rawLower.length === 16 && /^[0-9a-f]{16}$/.test(rawLower)) {
-    return { token: rawLower, gender: null, age: null };
-  }
-
-  return null;
-}
-
-/**
- * Parse a raw GATT characteristic value into token + gender + age.
- * Formats: 19 chars (gender+age+token), 17 chars (gender+token), 16 chars (token only).
- */
-function parseGattValue(decoded: string): BlePayload | null {
-  // Full format: gender char + 2-digit age + 16 hex chars
-  if (decoded.length === 19) {
-    const gender = genderCharToGender(decoded[0]);
-    const ageStr = decoded.slice(1, 3);
-    const token = decoded.slice(3).toLowerCase();
-    if (/^\d{2}$/.test(ageStr) && /^[0-9a-f]{16}$/.test(token)) {
-      return { token, gender, age: parseInt(ageStr, 10) };
-    }
-  }
-
-  // Gender-only format: gender char + 16 hex chars
-  if (decoded.length === 17) {
-    const gender = genderCharToGender(decoded[0]);
-    const token = decoded.slice(1).toLowerCase(); // Case-insensitive (M11 fix)
-    if (/^[0-9a-f]{16}$/.test(token)) {
-      return { token, gender, age: null };
-    }
-  }
-
-  // Legacy format: 16 hex chars
-  const lower = decoded.toLowerCase(); // Case-insensitive (M11 fix)
-  if (lower.length === 16 && /^[0-9a-f]{16}$/.test(lower)) {
-    return { token: lower, gender: null, age: null };
-  }
-
-  return null;
+  return parseBlePayload(name.slice(LOCAL_NAME_PREFIX.length));
 }
 
 /**
@@ -334,7 +265,7 @@ async function attemptGattTokenRead(device: Device): Promise<void> {
         // Use atob (available on Hermes 0.71+); no Buffer in React Native
         try {
           const decoded = atob(read.value);
-          const payload = parseGattValue(decoded);
+          const payload = parseBlePayload(decoded);
           if (payload) {
             logger.ble(
               `GATT read token: ${payload.token.substring(0, 8)}... from ${deviceId.substring(0, 8)}`,

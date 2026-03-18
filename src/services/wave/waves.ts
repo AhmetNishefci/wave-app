@@ -1,5 +1,4 @@
 import { supabase } from "../supabase";
-import { useWaveStore } from "@/stores/waveStore";
 import type { WaveResult, Match } from "@/types";
 import { logger } from "@/utils/logger";
 import { getFreshSession } from "./session";
@@ -16,6 +15,12 @@ export interface SendWaveResult {
 // When a wave fails due to no network, queue the token and retry
 // when connectivity is restored. Queued waves expire after 15 min
 // (matching server-side wave lifetime).
+//
+// Intentionally in-memory only (not persisted to AsyncStorage):
+// - Waves expire server-side in 15 min, so persisting across app restarts
+//   would only create stale retry attempts
+// - The pendingWaves UI state in waveStore already shows the user their
+//   pending wave, and useBleLifecycle clears stale ones on foreground
 
 const WAVE_QUEUE_EXPIRY_MS = 15 * 60_000;
 
@@ -53,16 +58,23 @@ export function clearOfflineQueue(): void {
   stopNetworkListenerIfEmpty();
 }
 
+const FLUSH_STAGGER_MS = 3_000; // Stagger retries to avoid rate-limit burst
+
 async function flushOfflineQueue(): Promise<void> {
   const now = Date.now();
   // Filter out expired queued waves
   const valid = offlineQueue.filter((w) => now - w.queuedAt < WAVE_QUEUE_EXPIRY_MS);
   offlineQueue = [];
 
-  for (const queued of valid) {
+  for (let i = 0; i < valid.length; i++) {
+    const queued = valid[i];
     logger.wave("Retrying queued offline wave", { token: queued.token.substring(0, 8) });
-    // Fire and forget — result is logged but not surfaced to UI
-    // (the user already saw the pending state when they tapped)
+
+    // Stagger retries after the first to avoid hitting 20/min rate limit
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, FLUSH_STAGGER_MS));
+    }
+
     sendWave(queued.token).catch((e) =>
       logger.error("Offline wave retry failed", e),
     );
@@ -81,8 +93,6 @@ export async function sendWave(
   targetEphemeralToken: string,
 ): Promise<SendWaveResult> {
   try {
-    useWaveStore.getState().setWaving(true);
-
     const session = await getFreshSession();
     if (!session) {
       logger.error("Cannot send wave: no active session");
@@ -130,9 +140,6 @@ export async function sendWave(
         createdAt: new Date().toISOString(),
         seen: false,
       };
-      // Store update: caller can also do this, but we keep it here for
-      // backward compatibility and because match screen routing depends on it
-      useWaveStore.getState().addMatch(match);
       return { status: "match", match };
     }
 
@@ -150,7 +157,6 @@ export async function sendWave(
           createdAt: new Date().toISOString(),
           seen: true,
         };
-        useWaveStore.getState().addMatch(match);
         return { status: "already_matched", match };
       }
       return { status: "already_matched" };
@@ -164,8 +170,6 @@ export async function sendWave(
   } catch (error) {
     logger.error("Wave error", error);
     return { status: "error" };
-  } finally {
-    useWaveStore.getState().setWaving(false);
   }
 }
 
@@ -202,7 +206,6 @@ export async function undoWave(
       return false;
     }
 
-    useWaveStore.getState().removePendingWave(targetEphemeralToken);
     logger.wave("Wave undone", { token: targetEphemeralToken.substring(0, 8) });
     return true;
   } catch (error) {
@@ -230,7 +233,6 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
       return false;
     }
 
-    useWaveStore.getState().removeMatch(matchId);
     logger.wave("Match removed", { matchId });
     return true;
   } catch (error) {
@@ -242,6 +244,7 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
 /**
  * Block a user. Optionally reports them and removes any existing match.
  * The blocked user won't appear on radar and can't wave at the blocker.
+ * Callers are responsible for updating the local store (e.g. removing the match).
  */
 export async function blockUser(params: {
   blockedId: string;
@@ -267,11 +270,6 @@ export async function blockUser(params: {
     if (error) {
       logger.error("Block user failed", error);
       return false;
-    }
-
-    // Remove from local store
-    if (params.matchId) {
-      useWaveStore.getState().removeMatch(params.matchId);
     }
 
     logger.wave("User blocked", { blockedId: params.blockedId });

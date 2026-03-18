@@ -8,11 +8,23 @@ import { supabase } from "./supabase";
 import i18n from "@/i18n";
 import { useAuthStore } from "@/stores/authStore";
 import { useWaveStore } from "@/stores/waveStore";
+import { useTokenStore } from "@/stores/tokenStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { useBleStore } from "@/stores/bleStore";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { unsubscribeFromMatches } from "@/services/wave/realtime";
 import { clearOfflineQueue } from "@/services/wave/waves";
 import { resetTimezoneSyncCache } from "@/services/profile";
+import { resetLocationCache } from "@/services/location";
+
+// Lazy-load to match the pattern in useNotifications (may not be available in Expo Go)
+let unregisterPushToken: (() => Promise<void>) | null = null;
+try {
+  unregisterPushToken =
+    require("@/services/notifications").unregisterPushToken;
+} catch {
+  // notifications service depends on expo-notifications native module
+}
 import { logger } from "@/utils/logger";
 
 // Lazy-load expo-apple-authentication — may not be available on Android/Expo Go
@@ -235,15 +247,25 @@ export async function signOut(): Promise<void> {
     // Unsubscribe from realtime before signing out (H12 fix)
     unsubscribeFromMatches();
 
+    // Remove push token from server so old account stops receiving notifications
+    try {
+      if (unregisterPushToken) await unregisterPushToken();
+    } catch {
+      // Non-fatal — token will be overwritten on next sign-in
+    }
+
     // Clear offline wave queue to prevent stale waves leaking to new session
     clearOfflineQueue();
 
     // Reset module-level caches (LP2 fix)
     resetTimezoneSyncCache();
+    resetLocationCache();
 
     // Reset ALL stores BEFORE signOut so navigation triggered by
     // onAuthStateChange sees clean state (L2 fix)
     useWaveStore.getState().reset();
+    useTokenStore.getState().reset();
+    useMatchStore.getState().reset();
     useBleStore.getState().reset();
     useAuthStore.getState().reset();
 

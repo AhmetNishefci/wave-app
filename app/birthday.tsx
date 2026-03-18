@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Platform } from "react-native";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Platform, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -33,6 +33,12 @@ export default function BirthdayScreen() {
       router.replace("/login");
     }
   }, [isAuthenticated, router]);
+
+  // Block Android hardware back button during onboarding
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, []);
 
   // If DOB is already set, skip forward (route to age-blocked if underage)
   useEffect(() => {

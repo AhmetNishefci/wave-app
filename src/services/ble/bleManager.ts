@@ -9,7 +9,7 @@ import {
 } from "./advertiser";
 import { requestBlePermissions } from "./permissions";
 import { useBleStore } from "@/stores/bleStore";
-import { useWaveStore } from "@/stores/waveStore";
+import { useTokenStore } from "@/stores/tokenStore";
 import { useAuthStore } from "@/stores/authStore";
 import { SCAN_DURATION_MS, SCAN_PAUSE_MS } from "./constants";
 import type { BleAdapterState } from "@/types";
@@ -99,7 +99,7 @@ class WaveBleManager {
       throw new Error("BLE permissions not granted.");
     }
 
-    const token = useWaveStore.getState().currentToken;
+    const token = useTokenStore.getState().currentToken;
     if (!token) {
       throw new Error("No ephemeral token available. Fetch one first.");
     }
@@ -259,7 +259,7 @@ class WaveBleManager {
 
     // Stop old advertisement and wait for completion before restarting (H6 fix)
     // This prevents overlapping advertising sessions from the pause/resume race
-    const token = useWaveStore.getState().currentToken;
+    const token = useTokenStore.getState().currentToken;
     if (token && await isPeripheralSupported()) {
       try {
         await stopAdvertising();

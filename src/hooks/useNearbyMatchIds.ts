@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useBleStore } from "@/stores/bleStore";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 
 /**
  * Returns a Set of matchedUserIds that are currently within BLE range.
@@ -10,7 +10,7 @@ import { useWaveStore } from "@/stores/waveStore";
  */
 export function useNearbyMatchIds(): Set<string> {
   const nearbyPeers = useBleStore((s) => s.nearbyPeers);
-  const matches = useWaveStore((s) => s.matches);
+  const matches = useMatchStore((s) => s.getMatchesArray());
 
   return useMemo(() => {
     // Build set of user IDs currently on the radar

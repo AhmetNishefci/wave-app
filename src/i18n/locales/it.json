@@ -44,6 +44,7 @@
     "noCountries": "Nessun paese trovato",
     "couldntSendCode": "Impossibile inviare il codice",
     "verificationFailed": "Verifica fallita",
+    "tooManyAttempts": "Troppi tentativi falliti. Attendi 30 secondi prima di riprovare.",
     "couldntResend": "Impossibile reinviare",
     "goBack": "Torna indietro",
     "countryCode": "Prefisso {{dial}}",

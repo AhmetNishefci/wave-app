@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -50,6 +50,12 @@ export default function GenderScreen() {
       router.replace("/login");
     }
   }, [isAuthenticated, router]);
+
+  // Block Android hardware back button during onboarding
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, []);
 
   // If gender is already set, skip this screen
   useEffect(() => {

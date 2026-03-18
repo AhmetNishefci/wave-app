@@ -12,7 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { notifySuccess, impactLight } from "@/utils/haptics";
 import { playMatchChime } from "@/utils/sound";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { supabase } from "@/services/supabase";
 import { logger } from "@/utils/logger";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
@@ -44,8 +44,8 @@ interface ConfettiPiece {
 export default function MatchScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const latestUnseenMatch = useWaveStore((s) => s.latestUnseenMatch);
-  const markMatchSeen = useWaveStore((s) => s.markMatchSeen);
+  const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
+  const markMatchSeen = useMatchStore((s) => s.markMatchSeen);
   const nearbyMatchIds = useNearbyMatchIds();
 
   // Snapshot the match on mount so it doesn't disappear mid-celebration
@@ -91,13 +91,12 @@ export default function MatchScreen() {
         if (cancelled) return;
 
         // Check if store was updated by Realtime while we waited
-        const storeMatch = useWaveStore.getState().matches
-          .find((m) => m.matchId === displayMatch.matchId);
+        const storeMatch = useMatchStore.getState().matchesById.get(displayMatch.matchId);
         if (storeMatch?.instagramHandle || storeMatch?.snapchatHandle) {
           const handles: { instagramHandle?: string; snapchatHandle?: string } = {};
           if (storeMatch.instagramHandle) handles.instagramHandle = storeMatch.instagramHandle;
           if (storeMatch.snapchatHandle) handles.snapchatHandle = storeMatch.snapchatHandle;
-          useWaveStore.getState().updateMatchHandles(displayMatch.matchId, handles);
+          useMatchStore.getState().updateMatchHandles(displayMatch.matchId, handles);
           if (!cancelled) setHandleLoading(false);
           return;
         }
@@ -114,7 +113,7 @@ export default function MatchScreen() {
               const handles: { instagramHandle?: string; snapchatHandle?: string } = {};
               if (row.instagram_handle) handles.instagramHandle = row.instagram_handle;
               if (row.snapchat_handle) handles.snapchatHandle = row.snapchat_handle;
-              useWaveStore.getState().updateMatchHandles(displayMatch.matchId, handles);
+              useMatchStore.getState().updateMatchHandles(displayMatch.matchId, handles);
               setHandleLoading(false);
               return;
             }
@@ -152,7 +151,7 @@ export default function MatchScreen() {
     }));
   }, []);
 
-  const matchCount = useWaveStore((s) => s.matches.length);
+  const matchCount = useMatchStore((s) => s.matchesById.size);
 
   const milestone = MATCH_MILESTONES.includes(matchCount)
     ? matchCount === 1

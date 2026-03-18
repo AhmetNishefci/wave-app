@@ -44,6 +44,7 @@
     "noCountries": "Ülke bulunamadı",
     "couldntSendCode": "Kod gönderilemedi",
     "verificationFailed": "Doğrulama başarısız",
+    "tooManyAttempts": "Çok fazla başarısız deneme. Lütfen tekrar denemeden önce 30 saniye bekleyin.",
     "couldntResend": "Tekrar gönderilemedi",
     "goBack": "Geri dön",
     "countryCode": "Ülke kodu {{dial}}",

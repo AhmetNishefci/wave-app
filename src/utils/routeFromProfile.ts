@@ -5,15 +5,25 @@ import { fetchMatchesFromServer } from "@/services/wave/matches";
 import { isAtLeastAge } from "@/utils/age";
 import { logger } from "@/utils/logger";
 
+const FETCH_TIMEOUT_MS = 15_000; // 15s timeout per attempt to prevent infinite hang
+
 /**
  * Fetch the user's profile and navigate to the correct screen based on
  * onboarding completeness. Used by both the splash screen (cold start)
  * and login screens (post sign-in) to avoid duplicate routing logic.
  *
- * Returns false if the profile fetch failed (caller should handle retry).
+ * Returns false if the profile fetch failed or timed out (caller should handle retry).
  */
 export async function fetchAndRoute(router: Router): Promise<boolean> {
-  const profile = await fetchProfile();
+  const profile = await Promise.race([
+    fetchProfile(),
+    new Promise<null>((resolve) => {
+      setTimeout(() => {
+        logger.error("Profile fetch timed out");
+        resolve(null);
+      }, FETCH_TIMEOUT_MS);
+    }),
+  ]);
   if (!profile) return false;
 
   const {

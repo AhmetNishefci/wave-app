@@ -1,5 +1,6 @@
 import { supabase } from "../supabase";
 import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { logger } from "@/utils/logger";
 import NetInfo from "@react-native-community/netinfo";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -48,7 +49,7 @@ function createChannel(userId: string): void {
 
       if (data.match_id && data.matched_user_id) {
         // Add match immediately (without handle) so the celebration screen triggers
-        useWaveStore.getState().addMatch({
+        useMatchStore.getState().addMatch({
           matchId: data.match_id,
           matchedUserId: data.matched_user_id,
           instagramHandle: undefined,
@@ -80,7 +81,7 @@ function createChannel(userId: string): void {
       logger.wave("Match removed event received", payload);
       const data = payload.payload as { match_id?: string };
       if (data.match_id) {
-        useWaveStore.getState().removeMatch(data.match_id);
+        useMatchStore.getState().removeMatch(data.match_id);
       }
     })
     .subscribe((status, err) => {
@@ -185,7 +186,7 @@ async function fetchMatchHandle(matchId: string): Promise<void> {
     if (row?.snapchat_handle) handles.snapchatHandle = row.snapchat_handle;
 
     if (handles.instagramHandle || handles.snapchatHandle) {
-      useWaveStore.getState().updateMatchHandles(matchId, handles);
+      useMatchStore.getState().updateMatchHandles(matchId, handles);
       logger.wave("Match handles fetched via RPC", { matchId, handles });
     }
     return;

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
-import { fetchNewToken } from "@/services/wave/ephemeralId";
+import { fetchNewToken, type TokenResponse } from "@/services/wave/ephemeralId";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { useWaveStore } from "@/stores/waveStore";
+import { useTokenStore } from "@/stores/tokenStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { useAuthStore } from "@/stores/authStore";
 import {
   EPHEMERAL_ROTATION_MS,
@@ -10,6 +12,18 @@ import {
 import { logger } from "@/utils/logger";
 
 const MAX_CONSECUTIVE_FAILURES = 5;
+
+/** Apply a token response to all relevant stores (O3 — caller-side store updates) */
+function applyTokenResult(result: TokenResponse): void {
+  const expiresAtMs = new Date(result.expires_at).getTime();
+  useTokenStore.getState().setToken(result.token, expiresAtMs);
+
+  if (result.gender) {
+    useAuthStore.getState().setGender(result.gender);
+  }
+  useAuthStore.getState().setAge(result.age ?? null);
+  useAuthStore.getState().setNote(result.note ?? null);
+}
 
 /**
  * Manages ephemeral token lifecycle: initial fetch and periodic rotation.
@@ -37,7 +51,7 @@ export function useEphemeralRotation() {
         delay = Math.min(30_000 * Math.pow(2, consecutiveFailures - 1), 5 * 60_000);
         logger.wave(`Token rotation backoff: retry in ${Math.round(delay / 1000)}s (failure #${consecutiveFailures})`);
       } else {
-        const { tokenExpiresAt } = useWaveStore.getState();
+        const { tokenExpiresAt } = useTokenStore.getState();
         // Default to rotating in the standard interval if no expiry is set
         const baseDelay = tokenExpiresAt
           ? Math.max(1_000, tokenExpiresAt - Date.now() - EPHEMERAL_REFRESH_BUFFER_MS)
@@ -53,19 +67,22 @@ export function useEphemeralRotation() {
         if (aborted) return;
 
         logger.wave("Rotating ephemeral token...");
+        useTokenStore.getState().setRotating(true);
 
         const result = await fetchNewToken();
         if (aborted) return;
+        useTokenStore.getState().setRotating(false);
 
         if (result) {
           consecutiveFailures = 0;
+          applyTokenResult(result);
 
           // Clear stale state AFTER new token is confirmed (C4 fix).
           // Previously these were cleared before fetch, causing state loss
           // on transient failures.
           useWaveStore.getState().clearAllPendingWaves();
           useWaveStore.getState().resetIncomingWaveTokens();
-          useWaveStore.getState().clearMatchedTokens();
+          useMatchStore.getState().clearMatchedTokens();
 
           await waveBleManager.rotateToken(result.token);
         } else {
@@ -87,13 +104,16 @@ export function useEphemeralRotation() {
     };
 
     // Only fetch a new token if we don't have a valid one
-    const { currentToken: existingToken, tokenExpiresAt } = useWaveStore.getState();
+    const { currentToken: existingToken, tokenExpiresAt } = useTokenStore.getState();
     const hasValidToken = existingToken && tokenExpiresAt && tokenExpiresAt > Date.now() + EPHEMERAL_REFRESH_BUFFER_MS;
 
     if (!hasValidToken) {
+      useTokenStore.getState().setRotating(true);
       fetchNewToken().then((result) => {
         if (aborted) return;
+        useTokenStore.getState().setRotating(false);
         if (result) {
+          applyTokenResult(result);
           waveBleManager.rotateToken(result.token).catch((error) => {
             logger.error("Failed to update advertiser with initial token", error);
           });

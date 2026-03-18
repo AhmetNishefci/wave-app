@@ -1,5 +1,5 @@
 import { supabase } from "../supabase";
-import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import { logger } from "@/utils/logger";
 import type { Match } from "@/types";
 
@@ -39,8 +39,8 @@ export async function fetchMatchesFromServer(): Promise<boolean> {
     if (!data || data.length === 0) {
       // Server returned zero matches — remove all local matches that are
       // ghosts (removed by the other party while we were offline).
-      const store = useWaveStore.getState();
-      if (store.matches.length > 0) {
+      const store = useMatchStore.getState();
+      if (store.matchesById.size > 0) {
         store.clearMatches();
         logger.wave("Cleared all local matches (server has none)");
       }
@@ -126,8 +126,8 @@ async function mergeServerMatches(
     logger.error("Failed to fetch match contact handles via RPC", handleError);
   }
 
-  const store = useWaveStore.getState();
-  const existingIds = new Set(store.matches.map((m) => m.matchId));
+  const store = useMatchStore.getState();
+  const existingIds = new Set(Array.from(store.matchesById.keys()));
 
   const serverMatches: Match[] = data
     .filter((row) => !existingIds.has(row.id))
@@ -158,7 +158,7 @@ async function mergeServerMatches(
   for (const row of data) {
     const handles = handleMap.get(row.id);
     if (handles) {
-      const existing = store.matches.find((m) => m.matchId === row.id);
+      const existing = store.matchesById.get(row.id);
       if (existing) {
         const updates: { instagramHandle?: string; snapchatHandle?: string } = {};
         if (handles.instagram && !existing.instagramHandle) updates.instagramHandle = handles.instagram;
@@ -193,7 +193,7 @@ async function mergeServerMatches(
     // candidates for ghost removal — they're fresh data, not stale ghosts.
     for (const localId of existingIds) {
       if (serverMatchIds.has(localId)) continue; // exists on server
-      const local = store.matches.find((m) => m.matchId === localId);
+      const local = store.matchesById.get(localId);
       if (!local) continue; // already removed
       if (oldestServerTimestamp && local.createdAt < oldestServerTimestamp) continue; // older than page range
       ghostIds.push(localId);
@@ -201,7 +201,7 @@ async function mergeServerMatches(
 
     if (ghostIds.length > 0) {
       for (const id of ghostIds) {
-        useWaveStore.getState().removeMatch(id);
+        useMatchStore.getState().removeMatch(id);
       }
       logger.wave("Removed ghost matches not found on server", {
         count: ghostIds.length,

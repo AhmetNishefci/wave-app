@@ -3,14 +3,12 @@ import { logger } from "@/utils/logger";
 import { getLocales } from "expo-localization";
 import type { Gender, GenderPreference } from "@/types";
 
-// Cache to avoid syncing timezone on every app open
-let lastTimezoneSyncMs = 0;
-const TIMEZONE_SYNC_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-/** Reset the timezone sync throttle. Called on sign-out so the next
- *  user's timezone is synced immediately (LP2 fix). */
+/**
+ * No-op retained for backward compatibility — callers (auth.ts signOut)
+ * still reference it. Timezone is now synced on every app open (no throttle).
+ */
 export function resetTimezoneSyncCache(): void {
-  lastTimezoneSyncMs = 0;
+  // No-op — timezone sync is no longer throttled
 }
 
 /**
@@ -535,30 +533,30 @@ export async function syncTimezoneAndActivity(): Promise<void> {
       last_active_at: new Date().toISOString(),
     };
 
-    // Sync timezone and locale periodically (defense-in-depth: validate IANA format)
-    if (now - lastTimezoneSyncMs > TIMEZONE_SYNC_INTERVAL_MS) {
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        // Validate: IANA timezones contain a "/" (e.g. "America/New_York", "Asia/Tokyo")
-        // Reject bare offsets like "UTC" or invalid strings
-        if (tz && tz.includes("/")) {
-          updates.timezone = tz;
-          lastTimezoneSyncMs = now;
-        }
-      } catch {
-        // Intl not available on some engines — skip
+    // Sync timezone on every app open — cheap write, prevents engagement
+    // notifications at wrong local time when users travel.
+    // Previously throttled to 7 days, but a user flying NY→Tokyo would get
+    // push notifications at 4 AM for a week. Not worth the micro-optimization.
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Validate: IANA timezones contain a "/" (e.g. "America/New_York", "Asia/Tokyo")
+      // Reject bare offsets like "UTC" or invalid strings
+      if (tz && tz.includes("/")) {
+        updates.timezone = tz;
       }
+    } catch {
+      // Intl not available on some engines — skip
+    }
 
-      // Sync device locale (e.g. "en", "fr", "de-DE") so push notifications
-      // can be sent in the user's language
-      try {
-        const deviceLocale = getLocales()?.[0]?.languageTag;
-        if (deviceLocale) {
-          updates.locale = deviceLocale;
-        }
-      } catch {
-        // expo-localization not available — skip
+    // Sync device locale (e.g. "en", "fr", "de-DE") so push notifications
+    // can be sent in the user's language
+    try {
+      const deviceLocale = getLocales()?.[0]?.languageTag;
+      if (deviceLocale) {
+        updates.locale = deviceLocale;
       }
+    } catch {
+      // expo-localization not available — skip
     }
 
     const { error } = await supabase

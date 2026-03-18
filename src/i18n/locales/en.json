@@ -44,6 +44,7 @@
     "noCountries": "No countries found",
     "couldntSendCode": "Couldn't Send Code",
     "verificationFailed": "Verification Failed",
+    "tooManyAttempts": "Too many failed attempts. Please wait 30 seconds before trying again.",
     "couldntResend": "Couldn't Resend",
     "goBack": "Go back",
     "countryCode": "Country code {{dial}}",

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Pressable } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useWaveStore } from "@/stores/waveStore";
+import { useMatchStore } from "@/stores/matchStore";
 import type { NearbyPeer } from "@/types";
 import { getAvatarForToken, getTimeSince, getDistanceZone } from "@/types";
 import { ZONE_CONFIG } from "@/constants/zones";
@@ -27,7 +28,7 @@ export function PeerRow({
   const wavePending = useWaveStore(
     (s) => s.pendingWaves.get(peer.ephemeralToken) ?? null,
   );
-  const isAlreadyMatched = useWaveStore(
+  const isAlreadyMatched = useMatchStore(
     (s) => s.matchedTokens.has(peer.ephemeralToken),
   );
   const hasWavedAtMe = useWaveStore(

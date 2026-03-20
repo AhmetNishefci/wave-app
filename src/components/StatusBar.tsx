@@ -55,26 +55,9 @@ export function BleStatusBar({
     );
   }
 
-  if (!isScanning && !isAdvertising) {
-    return null;
-  }
-
-  return (
-    <View className="flex-row items-center bg-wave-surface rounded-xl px-4 py-2 mb-4">
-      <View className="flex-row items-center flex-1">
-        {isScanning && (
-          <View className="flex-row items-center mr-4">
-            <View className="w-2 h-2 rounded-full bg-wave-accent mr-2" />
-            <Text className="text-wave-accent text-xs">{t("bleStatus.scanning")}</Text>
-          </View>
-        )}
-        {isAdvertising && (
-          <View className="flex-row items-center">
-            <View className="w-2 h-2 rounded-full bg-wave-primary mr-2" />
-            <Text className="text-wave-primary text-xs">{t("bleStatus.broadcasting")}</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
+  // Normal active state — no status bar needed. The user already knows
+  // discovery is running (they pressed Start). Error states above handle
+  // actionable problems. Showing "Scanning / Broadcasting" is technical
+  // jargon that confuses non-technical users.
+  return null;
 }

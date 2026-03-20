@@ -11,7 +11,14 @@ import {
   RefreshControl,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { impactMedium, impactLight, notifySuccess, notifyError } from "@/utils/haptics";
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
@@ -41,6 +48,21 @@ import { COLORS } from "@/constants/colors";
 import { ZONE_CONFIG } from "@/constants/zones";
 
 const PEER_DISPLAY_CAP = 50;
+
+/** Subtle pulsing dot — signals the radar is live when peers are visible */
+function LiveDot() {
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(0.3, { duration: 1200 }), -1, true);
+  }, [opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View
+      style={style}
+      className="w-2 h-2 rounded-full bg-green-400 mr-2"
+    />
+  );
+}
 
 interface ZoneSection {
   zone: DistanceZone;
@@ -438,13 +460,16 @@ export default function RadarScreen() {
       <View className="flex-row items-center justify-between mb-4">
         <View>
           <Text className="text-3xl font-bold text-white">{t("radar.title")}</Text>
-          <Text className="text-wave-muted text-sm mt-1">
-            {totalPeers > 0
-              ? t("radar.peopleNearby", { count: totalPeers })
-              : isDiscoveryActive
-                ? t("radar.searching")
-                : t("radar.startScanning")}
-          </Text>
+          <View className="flex-row items-center mt-1">
+            {isDiscoveryActive && totalPeers > 0 && <LiveDot />}
+            <Text className="text-wave-muted text-sm">
+              {totalPeers > 0
+                ? t("radar.peopleNearby", { count: totalPeers })
+                : isDiscoveryActive
+                  ? t("radar.searching")
+                  : t("radar.startScanning")}
+            </Text>
+          </View>
         </View>
       </View>
 

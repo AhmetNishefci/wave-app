@@ -65,14 +65,18 @@ export default function RadarScreen() {
   const { currentToken } = useTokenStore();
   const rawIncomingWaveTokens = useWaveStore((s) => s.incomingWaveTokens);
   const matchedTokens = useMatchStore((s) => s.matchedTokens);
+  const myGender = useAuthStore((s) => s.gender);
+  const myAge = useAuthStore((s) => s.age);
   const genderPreference = useAuthStore((s) => s.genderPreference);
   const agePreferenceMin = useAuthStore((s) => s.agePreferenceMin);
   const agePreferenceMax = useAuthStore((s) => s.agePreferenceMax);
   const { isConnected } = useNetworkStatus();
 
-  // Filter peers by gender and age preferences before display
+  // Filter peers by mutual preferences — both users must match each other's criteria.
+  // This prevents one-sided visibility where A sees B but B can't see A.
   const filteredPeers = useMemo(() => {
     const filtered = new Map<string, NearbyPeer>();
+    const seenUserIds = new Map<string, string>(); // userId → token (for dedup)
     const filterGender = genderPreference && genderPreference !== "both";
     const filterAge = agePreferenceMin != null && agePreferenceMax != null;
 
@@ -81,21 +85,47 @@ export default function RadarScreen() {
       if (peer.userId && blockedUserIds.has(peer.userId)) {
         continue;
       }
-      // Gender filter: show if no preference, preference is "both", gender matches, or gender unknown
+      // Forward filter: does this peer match MY preferences?
       if (filterGender && peer.gender && peer.gender !== genderPreference) {
         continue;
       }
-      // Age filter: show if no preference set, age matches range, or age unknown
       if (filterAge && peer.age != null) {
         if (peer.age < agePreferenceMin || peer.age > agePreferenceMax) {
           continue;
+        }
+      }
+      // Reverse filter: do I match THIS PEER's preferences?
+      // Only apply when the peer's preferences have been resolved from the server.
+      if (peer.genderPreference && peer.genderPreference !== "both" && myGender) {
+        if (myGender !== peer.genderPreference) {
+          continue;
+        }
+      }
+      if (peer.agePreferenceMin != null && peer.agePreferenceMax != null && myAge != null) {
+        if (myAge < peer.agePreferenceMin || myAge > peer.agePreferenceMax) {
+          continue;
+        }
+      }
+      // Dedup by userId: if we already have a peer with this userId, keep the fresher one
+      if (peer.userId) {
+        const existingToken = seenUserIds.get(peer.userId);
+        if (existingToken) {
+          const existingPeer = filtered.get(existingToken)!;
+          if (peer.lastSeen > existingPeer.lastSeen) {
+            filtered.delete(existingToken);
+            seenUserIds.set(peer.userId, token);
+          } else {
+            continue;
+          }
+        } else {
+          seenUserIds.set(peer.userId, token);
         }
       }
       filtered.set(token, peer);
     }
 
     return filtered;
-  }, [nearbyPeers, blockedUserIds, genderPreference, agePreferenceMin, agePreferenceMax]);
+  }, [nearbyPeers, blockedUserIds, myGender, myAge, genderPreference, agePreferenceMin, agePreferenceMax]);
 
   // Only count incoming waves from wavers still visible on the radar
   // AND matching gender preference (prevent phantom wave notifications).

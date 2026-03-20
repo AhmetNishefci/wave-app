@@ -28,6 +28,8 @@ interface ScannerSession {
   pendingGattReads: Set<string>;
   gattQueue: Device[]; // Queued devices waiting for a GATT slot
   recentGattReads: Map<string, number>;
+  /** Maps BLE device ID → last known ephemeral token for same-device dedup */
+  deviceToToken: Map<string, string>;
   pendingUpserts: NearbyPeer[];
   upsertTimer: ReturnType<typeof setTimeout> | null;
   bleManager: BleManager | null;
@@ -40,6 +42,7 @@ function createFreshSession(): ScannerSession {
     pendingGattReads: new Set(),
     gattQueue: [],
     recentGattReads: new Map(),
+    deviceToToken: new Map(),
     pendingUpserts: [],
     upsertTimer: null,
     bleManager: null,
@@ -182,6 +185,14 @@ function upsertPeerWithToken(device: Device, token: string, gender: Gender | nul
   const rssi = device.rssi ?? -100;
   const now = Date.now();
 
+  // Dedup: if this device was previously advertising a different token (e.g., user
+  // killed and reopened the app), remove the old token's peer entry immediately.
+  const previousToken = session.deviceToToken.get(deviceId);
+  if (previousToken && previousToken !== token) {
+    useBleStore.getState().removePeer(previousToken);
+  }
+  session.deviceToToken.set(deviceId, token);
+
   const existing = useBleStore.getState().nearbyPeers.get(token);
 
   const peer: NearbyPeer = {
@@ -194,6 +205,9 @@ function upsertPeerWithToken(device: Device, token: string, gender: Gender | nul
     age: age ?? existing?.age ?? null,
     note: existing?.note ?? null,
     userId: existing?.userId ?? null,
+    genderPreference: existing?.genderPreference ?? null,
+    agePreferenceMin: existing?.agePreferenceMin ?? null,
+    agePreferenceMax: existing?.agePreferenceMax ?? null,
   };
 
   // Batch upserts to avoid creating a new Map on every BLE advertisement.

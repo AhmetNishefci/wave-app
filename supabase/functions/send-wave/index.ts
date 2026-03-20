@@ -263,41 +263,56 @@ serve(async (req: Request) => {
           console.error("Failed to look up waver token:", err);
         }
 
-        try {
-          const ch = adminClient.channel(`user:${targetUserId}`);
-          await ch.send({
-            type: "broadcast",
-            event: "wave",
-            payload: { t: Date.now(), waver_token: waverToken },
-          });
-          adminClient.removeChannel(ch);
-        } catch (err) {
-          console.error("Wave broadcast to target failed:", err);
-        }
-
-        // Look up target user's locale for localized push
-        let targetLocale: string | null = null;
-        try {
-          const { data: targetProfile } = await adminClient
+        // Check mutual preferences before notifying — suppress notification if
+        // the target user's preferences would exclude the waver from their radar.
+        // The wave record still exists (for future matching if preferences change).
+        const [waverProfileRes, targetProfileRes] = await Promise.all([
+          adminClient
             .from("profiles")
-            .select("locale")
+            .select("gender, date_of_birth, gender_preference, age_preference_min, age_preference_max")
+            .eq("id", user.id)
+            .maybeSingle(),
+          adminClient
+            .from("profiles")
+            .select("gender, date_of_birth, gender_preference, age_preference_min, age_preference_max, locale")
             .eq("id", targetUserId)
-            .single();
-          targetLocale = targetProfile?.locale ?? null;
-        } catch {
-          // Non-fatal — fall back to English
+            .maybeSingle(),
+        ]);
+
+        const waverProfile = waverProfileRes.data;
+        const targetProfile = targetProfileRes.data;
+        const shouldNotify = checkMutualPreferences(waverProfile, targetProfile);
+
+        if (!shouldNotify) {
+          console.log(`Wave notification suppressed (preference mismatch): ${user.id} → ${targetUserId}`);
         }
 
-        // Send push notification to target user — include waver's note for context
-        const pushBody = waverNote
-          ? getPushString(targetLocale, "waveBodyWithNote").replace("{{note}}", waverNote)
-          : getPushString(targetLocale, "waveBody");
+        if (shouldNotify) {
+          try {
+            const ch = adminClient.channel(`user:${targetUserId}`);
+            await ch.send({
+              type: "broadcast",
+              event: "wave",
+              payload: { t: Date.now(), waver_token: waverToken },
+            });
+            adminClient.removeChannel(ch);
+          } catch (err) {
+            console.error("Wave broadcast to target failed:", err);
+          }
 
-        await sendExpoPush(adminClient, targetUserId, {
-          title: getPushString(targetLocale, "waveTitle"),
-          body: pushBody,
-          data: { type: "wave" },
-        });
+          const targetLocale = targetProfile?.locale ?? null;
+
+          // Send push notification to target user — include waver's note for context
+          const pushBody = waverNote
+            ? getPushString(targetLocale, "waveBodyWithNote").replace("{{note}}", waverNote)
+            : getPushString(targetLocale, "waveBody");
+
+          await sendExpoPush(adminClient, targetUserId, {
+            title: getPushString(targetLocale, "waveTitle"),
+            body: pushBody,
+            data: { type: "wave" },
+          });
+        }
       }
     }
 
@@ -483,4 +498,85 @@ async function sendExpoPush(
   } catch (err) {
     console.error(`Push notification failed for ${targetUserId}:`, err);
   }
+}
+
+/* ─── Mutual Preference Check ─────────────────────────────────── */
+
+interface ProfilePrefs {
+  gender: string | null;
+  date_of_birth: string | null;
+  gender_preference: string | null;
+  age_preference_min: number | null;
+  age_preference_max: number | null;
+}
+
+/**
+ * Check if two users' preferences mutually match.
+ * Returns true if both users would see each other on radar.
+ * Defaults to true when data is missing (graceful degradation).
+ */
+function checkMutualPreferences(
+  waverProfile: ProfilePrefs | null,
+  targetProfile: ProfilePrefs | null,
+): boolean {
+  if (!waverProfile || !targetProfile) return true; // Missing data → allow
+
+  const waverAge = getAge(waverProfile.date_of_birth);
+  const targetAge = getAge(targetProfile.date_of_birth);
+
+  // Does target's gender preference exclude the waver?
+  if (
+    targetProfile.gender_preference &&
+    targetProfile.gender_preference !== "both" &&
+    waverProfile.gender &&
+    waverProfile.gender !== targetProfile.gender_preference
+  ) {
+    return false;
+  }
+
+  // Does waver's gender preference exclude the target?
+  if (
+    waverProfile.gender_preference &&
+    waverProfile.gender_preference !== "both" &&
+    targetProfile.gender &&
+    targetProfile.gender !== waverProfile.gender_preference
+  ) {
+    return false;
+  }
+
+  // Does target's age preference exclude the waver?
+  if (
+    targetProfile.age_preference_min != null &&
+    targetProfile.age_preference_max != null &&
+    waverAge != null
+  ) {
+    if (waverAge < targetProfile.age_preference_min || waverAge > targetProfile.age_preference_max) {
+      return false;
+    }
+  }
+
+  // Does waver's age preference exclude the target?
+  if (
+    waverProfile.age_preference_min != null &&
+    waverProfile.age_preference_max != null &&
+    targetAge != null
+  ) {
+    if (targetAge < waverProfile.age_preference_min || targetAge > waverProfile.age_preference_max) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getAge(dateOfBirth: string | null): number | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDiff = now.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
 }

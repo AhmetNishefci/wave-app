@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/services/supabase";
 import { useBleStore } from "@/stores/bleStore";
+import type { NearbyPeer } from "@/types";
 import { logger } from "@/utils/logger";
 
 const POLL_INTERVAL_MS = 30_000;
@@ -81,6 +82,9 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
                   note: r.note,
                   peer_user_id: null,
                   is_blocked: false,
+                  peer_gender_preference: null,
+                  peer_age_preference_min: null,
+                  peer_age_preference_max: null,
                 })),
               );
             }
@@ -99,6 +103,9 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
           note: string | null;
           peer_user_id: string | null;
           is_blocked: boolean;
+          peer_gender_preference: string | null;
+          peer_age_preference_min: number | null;
+          peer_age_preference_max: number | null;
         }[];
 
         processNotes(batchedTokens, rows);
@@ -115,15 +122,37 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
   }, [isDiscoveryActive]);
 }
 
-function processNotes(
-  batchedTokens: string[],
-  rows: { token: string; note: string | null; peer_user_id: string | null; is_blocked: boolean }[],
-): void {
-  const dataMap = new Map<string, { note: string | null; userId: string | null }>();
+interface PeerRow {
+  token: string;
+  note: string | null;
+  peer_user_id: string | null;
+  is_blocked: boolean;
+  peer_gender_preference?: string | null;
+  peer_age_preference_min?: number | null;
+  peer_age_preference_max?: number | null;
+}
+
+function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
+  const dataMap = new Map<
+    string,
+    {
+      note: string | null;
+      userId: string | null;
+      genderPreference: string | null;
+      agePreferenceMin: number | null;
+      agePreferenceMax: number | null;
+    }
+  >();
   const blockedTokens = new Set<string>();
 
   for (const row of rows) {
-    dataMap.set(row.token, { note: row.note, userId: row.peer_user_id });
+    dataMap.set(row.token, {
+      note: row.note,
+      userId: row.peer_user_id,
+      genderPreference: row.peer_gender_preference ?? null,
+      agePreferenceMin: row.peer_age_preference_min ?? null,
+      agePreferenceMax: row.peer_age_preference_max ?? null,
+    });
     if (row.is_blocked) {
       blockedTokens.add(row.token);
       if (row.peer_user_id) {
@@ -135,7 +164,13 @@ function processNotes(
   // Tokens queried but not returned — clear stale data
   for (const token of batchedTokens) {
     if (!dataMap.has(token)) {
-      dataMap.set(token, { note: null, userId: null });
+      dataMap.set(token, {
+        note: null,
+        userId: null,
+        genderPreference: null,
+        agePreferenceMin: null,
+        agePreferenceMax: null,
+      });
     }
   }
 
@@ -143,7 +178,7 @@ function processNotes(
     const next = new Map(state.nearbyPeers);
     let changed = false;
 
-    for (const [token, { note, userId }] of dataMap) {
+    for (const [token, { note, userId, genderPreference, agePreferenceMin, agePreferenceMax }] of dataMap) {
       // Remove blocked peers from the radar
       if (blockedTokens.has(token)) {
         if (next.has(token)) {
@@ -154,9 +189,37 @@ function processNotes(
       }
 
       const peer = next.get(token);
-      if (peer && (peer.note !== note || peer.userId !== userId)) {
-        next.set(token, { ...peer, note, userId });
+      if (!peer) continue;
+
+      const needsUpdate =
+        peer.note !== note ||
+        peer.userId !== userId ||
+        peer.genderPreference !== genderPreference ||
+        peer.agePreferenceMin !== agePreferenceMin ||
+        peer.agePreferenceMax !== agePreferenceMax;
+
+      if (needsUpdate) {
+        next.set(token, {
+          ...peer,
+          note,
+          userId,
+          genderPreference: genderPreference as NearbyPeer["genderPreference"],
+          agePreferenceMin,
+          agePreferenceMax,
+        });
         changed = true;
+
+        // Dedup: if another token already maps to the same userId, evict the stale one.
+        // This happens when a user kills and reopens the app — they get a new token but
+        // the old token's peer entry is still in the map until pruneStale removes it.
+        if (userId) {
+          for (const [otherToken, otherPeer] of next) {
+            if (otherToken !== token && otherPeer.userId === userId) {
+              next.delete(otherPeer.lastSeen < peer.lastSeen ? otherToken : token);
+              break;
+            }
+          }
+        }
       }
     }
 

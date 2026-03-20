@@ -26,6 +26,10 @@ export interface NearbyPeer {
   note: string | null;
   /** Resolved user ID from server. Set by useNoteResolver after token lookup. */
   userId: string | null;
+  /** Peer's preferences, resolved from server. Used for mutual visibility filtering. */
+  genderPreference: GenderPreference | null;
+  agePreferenceMin: number | null;
+  agePreferenceMax: number | null;
 }
 
 export type DistanceZone = "HERE" | "CLOSE" | "NEARBY";

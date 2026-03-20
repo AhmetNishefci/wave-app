@@ -17,6 +17,8 @@ const MAX_CONCURRENT_GATT = 4;
 const UPSERT_BATCH_MS = 300;
 const MAX_GATT_QUEUE = 20; // Cap queued GATT reads to avoid unbounded growth
 const MAX_PENDING_UPSERTS = 100; // Force flush when batch gets large (F4 fix)
+/** EMA smoothing factor for RSSI. 0.3 = balanced (dampens jitter, reflects real movement in ~2-3s) */
+const RSSI_SMOOTHING_ALPHA = 0.3;
 const MAX_PEERS = 200; // Must match bleStore cap — enforced here for batch path (B2 fix)
 
 /**
@@ -110,7 +112,16 @@ function flushPendingUpserts(): void {
   useBleStore.setState((state) => {
     const next = new Map(state.nearbyPeers);
     for (const p of batch) {
-      next.set(p.ephemeralToken, p);
+      const existing = next.get(p.ephemeralToken);
+      if (existing) {
+        // EMA smoothing: blend new RSSI with previous to dampen zone-boundary jitter
+        next.set(p.ephemeralToken, {
+          ...p,
+          rssi: Math.round(RSSI_SMOOTHING_ALPHA * p.rssi + (1 - RSSI_SMOOTHING_ALPHA) * existing.rssi),
+        });
+      } else {
+        next.set(p.ephemeralToken, p);
+      }
     }
 
     // Enforce peer cap: evict weakest-signal peers if batch pushed us over.

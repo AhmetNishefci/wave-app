@@ -785,7 +785,8 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => Linking.openURL("mailto:support@wave-app.com?subject=Wave%20Support")}
+          // TODO: Change to "mailto:support@wave-app.com" after setting up domain email
+          onPress={() => Linking.openURL("mailto:ahmetnishefcii@gmail.com?subject=Wave%20Support")}
           className="py-3 flex-row justify-between items-center"
         >
           <Text className="text-white text-sm">{t("settings.emailSupport")}</Text>
@@ -796,7 +797,8 @@ export default function SettingsScreen() {
       {/* Legal — opens in browser (external links) */}
       <Section title={t("settings.legal")}>
         <TouchableOpacity
-          onPress={() => Linking.openURL("https://wave-app.com/privacy")}
+          // TODO: Change to "https://wave-app.com/privacy" after hosting on custom domain
+          onPress={() => Linking.openURL("https://wave-website-dun.vercel.app/privacy")}
           className="py-3 flex-row justify-between items-center"
           accessibilityLabel={t("settings.privacyPolicy")}
           accessibilityRole="link"
@@ -805,7 +807,8 @@ export default function SettingsScreen() {
           <Ionicons name="open-outline" size={14} color={COLORS.muted} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => Linking.openURL("https://wave-app.com/terms")}
+          // TODO: Change to "https://wave-app.com/terms" after hosting on custom domain
+          onPress={() => Linking.openURL("https://wave-website-dun.vercel.app/terms")}
           className="py-3 flex-row justify-between items-center"
           accessibilityLabel={t("settings.termsOfService")}
           accessibilityRole="link"

@@ -12,13 +12,13 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 // ─── Localized push notification strings ─────────────────────────────
 const PUSH_STRINGS: Record<string, Record<string, string>> = {
-  en: { proximityTitle: "Wave 👋", proximityBody: "A Wave user is nearby — open the app to connect!" },
-  de: { proximityTitle: "Wave 👋", proximityBody: "Ein Wave-Nutzer ist in der Nähe — öffne die App!" },
-  fr: { proximityTitle: "Wave 👋", proximityBody: "Un utilisateur Wave est à proximité — ouvre l'app !" },
-  es: { proximityTitle: "Wave 👋", proximityBody: "Un usuario de Wave está cerca — ¡abre la app!" },
-  it: { proximityTitle: "Wave 👋", proximityBody: "Un utente Wave è nelle vicinanze — apri l'app!" },
-  pt: { proximityTitle: "Wave 👋", proximityBody: "Um usuário Wave está por perto — abra o app!" },
-  tr: { proximityTitle: "Wave 👋", proximityBody: "Yakınında bir Wave kullanıcısı var — uygulamayı aç!" },
+  en: { proximityTitle: "Wave 👋", proximityBody: "Wave users are in your area — open the app to discover them!" },
+  de: { proximityTitle: "Wave 👋", proximityBody: "Wave-Nutzer sind in deiner Nähe — öffne die App und entdecke sie!" },
+  fr: { proximityTitle: "Wave 👋", proximityBody: "Des utilisateurs Wave sont dans ton quartier — ouvre l'app pour les découvrir !" },
+  es: { proximityTitle: "Wave 👋", proximityBody: "Hay usuarios de Wave en tu zona — ¡abre la app para descubrirlos!" },
+  it: { proximityTitle: "Wave 👋", proximityBody: "Utenti Wave sono nella tua zona — apri l'app per scoprirli!" },
+  pt: { proximityTitle: "Wave 👋", proximityBody: "Usuários Wave estão na sua área — abra o app para descobri-los!" },
+  tr: { proximityTitle: "Wave 👋", proximityBody: "Bölgendeki Wave kullanıcıları var — keşfetmek için uygulamayı aç!" },
 };
 
 function getPushString(locale: string | null, key: string): string {
@@ -147,7 +147,7 @@ serve(async (req: Request) => {
         p_user_id: userId,
         p_latitude: latitude,
         p_longitude: longitude,
-        p_radius_meters: 300,
+        p_radius_meters: 150,
         p_max_results: 50,
       },
     );

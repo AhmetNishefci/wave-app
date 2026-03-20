@@ -118,6 +118,9 @@ function generatePeers(): NearbyPeer[] {
       age: ages[i % ages.length],
       note: NAMES[i],
       userId: PEER_USER_IDS[i] ?? null,
+      genderPreference: i % 3 === 0 ? "both" : i % 3 === 1 ? "male" : "female",
+      agePreferenceMin: 18,
+      agePreferenceMax: 40,
     });
   }
 

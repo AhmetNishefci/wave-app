@@ -4,6 +4,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useMatchStore } from "@/stores/matchStore";
+import { useBleStore } from "@/stores/bleStore";
 import { removeMatchFromServer, blockUser } from "@/services/wave/waves";
 import { fetchMatchesFromServer, loadMoreMatches } from "@/services/wave/matches";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
@@ -373,7 +374,7 @@ function MatchActionSheet({
 
   const confirmBlock = async () => {
     setBlocking(true);
-    const success = await blockUser({
+    const result = await blockUser({
       blockedId: match.matchedUserId,
       displayName: safeName,
       matchId: match.matchId,
@@ -381,8 +382,10 @@ function MatchActionSheet({
     setBlocking(false);
     setShowBlockConfirm(false);
     onClose();
-    if (success) {
+    if (result.success) {
       useMatchStore.getState().removeMatch(match.matchId);
+      useBleStore.getState().removeByUserId(match.matchedUserId);
+      useBleStore.getState().addBlockedUserId(match.matchedUserId);
     } else {
       Alert.alert(t("common.error"), t("history.blockError"));
     }
@@ -391,7 +394,7 @@ function MatchActionSheet({
   const handleSubmitReport = async () => {
     if (!selectedReason) return;
     setSubmittingReport(true);
-    const success = await blockUser({
+    const result = await blockUser({
       blockedId: match.matchedUserId,
       displayName: safeName,
       matchId: match.matchId,
@@ -403,9 +406,13 @@ function MatchActionSheet({
     setSelectedReason(null);
     setReportDetails("");
     onClose();
-    if (success) {
+    if (result.success) {
       useMatchStore.getState().removeMatch(match.matchId);
-      Alert.alert("", t("history.reportConfirm"));
+      useBleStore.getState().removeByUserId(match.matchedUserId);
+      useBleStore.getState().addBlockedUserId(match.matchedUserId);
+      if (result.reportCreated) {
+        Alert.alert("", t("history.reportConfirm"));
+      }
     } else {
       Alert.alert(t("common.error"), t("history.reportError"));
     }

@@ -24,6 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "com.apple.developer.applesignin": ["Default"],
     },
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSBluetoothAlwaysUsageDescription:
         "Wave uses Bluetooth to discover nearby people and connect with them.",
       NSBluetoothPeripheralUsageDescription:
@@ -59,12 +60,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-web-browser",
     "expo-apple-authentication",
-    [
-      "@react-native-google-signin/google-signin",
-      {
-        iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME || "",
-      },
-    ],
+    ...(process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
+      ? [
+          [
+            "@react-native-google-signin/google-signin",
+            { iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME },
+          ] as [string, { iosUrlScheme: string }],
+        ]
+      : []),
     [
       "react-native-ble-plx",
       {

@@ -102,6 +102,7 @@ export default function SettingsScreen() {
     setUnblocking(false);
     if (success) {
       setBlockedUsers((prev) => prev.filter((u) => u.blockedId !== unblockTarget.blockedId));
+      useBleStore.getState().removeBlockedUserId(unblockTarget.blockedId);
       setUnblockTarget(null);
       showToast(t("settings.unblocked"));
     } else {

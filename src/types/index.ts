@@ -72,7 +72,7 @@ export interface ContactHandles {
 
 export type BlePermissionStatus = "unknown" | "granted" | "denied" | "blocked";
 
-export type WaveResult = "pending" | "match" | "already_matched" | "rate_limited" | "error";
+export type WaveResult = "pending" | "match" | "already_matched" | "rate_limited" | "blocked" | "error";
 
 export type BleAdapterState =
   | "Unknown"

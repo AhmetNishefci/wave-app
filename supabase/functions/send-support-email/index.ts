@@ -3,8 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-// TODO: Change to "support@wave-app.com" after verifying wave-app.com domain in Resend
-const SUPPORT_EMAIL = "ahmetnishefcii@gmail.com";
+// TODO: After verifying wave-app.com domain in Resend, run:
+//   supabase secrets set SUPPORT_EMAIL=support@wave-app.com
+const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "ahmetnishefcii@gmail.com";
 
 serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);

@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 16.0.0"
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -8,12 +9,40 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://kfknepqtcnlnvufxjqvw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtma25lcHF0Y25sbnZ1ZnhqcXZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDEzNjIsImV4cCI6MjA4NjY3NzM2Mn0.PM-9GTY4D9Hb8hVn968IvXfuzSK2aqZiatsSTOKnXtg",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "243651027844-dr49a11boevh8np0mufuu8dajuhkh5bb.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "243651027844-cbtsc4m9fqn7r9b2uvl86cf01j5l1fer.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.243651027844-cbtsc4m9fqn7r9b2uvl86cf01j5l1fer",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://2b57c3d73eadbb5e0b75ef1f8ec4da92@o4511068008611840.ingest.de.sentry.io/4511068010905680",
+        "SENTRY_AUTH_TOKEN": "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"
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://kfknepqtcnlnvufxjqvw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtma25lcHF0Y25sbnZ1ZnhqcXZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDEzNjIsImV4cCI6MjA4NjY3NzM2Mn0.PM-9GTY4D9Hb8hVn968IvXfuzSK2aqZiatsSTOKnXtg",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "243651027844-dr49a11boevh8np0mufuu8dajuhkh5bb.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "243651027844-cbtsc4m9fqn7r9b2uvl86cf01j5l1fer.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.243651027844-cbtsc4m9fqn7r9b2uvl86cf01j5l1fer",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://2b57c3d73eadbb5e0b75ef1f8ec4da92@o4511068008611840.ingest.de.sentry.io/4511068010905680",
+        "SENTRY_AUTH_TOKEN": "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"
+      }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://kfknepqtcnlnvufxjqvw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtma25lcHF0Y25sbnZ1ZnhqcXZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDEzNjIsImV4cCI6MjA4NjY3NzM2Mn0.PM-9GTY4D9Hb8hVn968IvXfuzSK2aqZiatsSTOKnXtg",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "243651027844-dr49a11boevh8np0mufuu8dajuhkh5bb.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "243651027844-cbtsc4m9fqn7r9b2uvl86cf01j5l1fer.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.243651027844-cbtsc4m9fqn7r9b2uvl86cf01j5l1fer",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://2b57c3d73eadbb5e0b75ef1f8ec4da92@o4511068008611840.ingest.de.sentry.io/4511068010905680",
+        "SENTRY_AUTH_TOKEN": "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"
+      }
+    }
   },
   "submit": {
     "production": {}

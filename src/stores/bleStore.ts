@@ -12,6 +12,7 @@ interface BleState {
   isAdvertising: boolean;
   permissionStatus: BlePermissionStatus;
   nearbyPeers: Map<string, NearbyPeer>;
+  blockedUserIds: Set<string>;
   error: string | null;
   /** Set when the user opens the app from a proximity alert notification */
   proximityAlertPending: boolean;
@@ -26,6 +27,9 @@ interface BleState {
   upsertPeer: (peer: NearbyPeer) => void;
   removePeer: (token: string) => void;
   pruneStale: () => void;
+  removeByUserId: (userId: string) => void;
+  addBlockedUserId: (userId: string) => void;
+  removeBlockedUserId: (userId: string) => void;
   clearPeers: () => void;
   reset: () => void;
 }
@@ -37,6 +41,7 @@ export const useBleStore = create<BleState>((set, get) => ({
   isAdvertising: false,
   permissionStatus: "unknown",
   nearbyPeers: new Map(),
+  blockedUserIds: new Set(),
   error: null,
   proximityAlertPending: false,
 
@@ -107,6 +112,37 @@ export const useBleStore = create<BleState>((set, get) => ({
       return { nearbyPeers: next };
     }),
 
+  removeByUserId: (userId) =>
+    set((state) => {
+      if (!userId) return state; // Guard against null/undefined
+      let found = false;
+      const next = new Map(state.nearbyPeers);
+      for (const [token, peer] of next) {
+        if (peer.userId === userId) {
+          next.delete(token);
+          found = true;
+        }
+      }
+      return found ? { nearbyPeers: next } : state;
+    }),
+
+  addBlockedUserId: (userId) =>
+    set((state) => {
+      if (!userId) return state;
+      if (state.blockedUserIds.has(userId)) return state;
+      const next = new Set(state.blockedUserIds);
+      next.add(userId);
+      return { blockedUserIds: next };
+    }),
+
+  removeBlockedUserId: (userId) =>
+    set((state) => {
+      if (!userId || !state.blockedUserIds.has(userId)) return state;
+      const next = new Set(state.blockedUserIds);
+      next.delete(userId);
+      return { blockedUserIds: next };
+    }),
+
   clearPeers: () => set({ nearbyPeers: new Map() }),
 
   reset: () =>
@@ -117,6 +153,7 @@ export const useBleStore = create<BleState>((set, get) => ({
       isAdvertising: false,
       permissionStatus: "unknown",
       nearbyPeers: new Map(),
+      blockedUserIds: new Set(),
       error: null,
       proximityAlertPending: false,
     }),

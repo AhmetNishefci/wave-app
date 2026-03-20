@@ -166,6 +166,10 @@ export async function sendWave(
       return { status: "rate_limited" };
     }
 
+    if (result.status === "error" && result.reason === "blocked") {
+      return { status: "blocked" };
+    }
+
     return { status: "error" };
   } catch (error) {
     logger.error("Wave error", error);
@@ -246,18 +250,23 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
  * The blocked user won't appear on radar and can't wave at the blocker.
  * Callers are responsible for updating the local store (e.g. removing the match).
  */
+export interface BlockUserResult {
+  success: boolean;
+  reportCreated?: boolean;
+}
+
 export async function blockUser(params: {
   blockedId: string;
   displayName?: string;
   matchId?: string;
   reason?: string;
   details?: string;
-}): Promise<boolean> {
+}): Promise<BlockUserResult> {
   try {
     const session = await getFreshSession();
-    if (!session) return false;
+    if (!session) return { success: false };
 
-    const { error } = await supabase.functions.invoke("block-user", {
+    const { data, error } = await supabase.functions.invoke("block-user", {
       body: {
         blocked_id: params.blockedId,
         display_name: params.displayName,
@@ -269,14 +278,17 @@ export async function blockUser(params: {
 
     if (error) {
       logger.error("Block user failed", error);
-      return false;
+      return { success: false };
     }
 
     logger.wave("User blocked", { blockedId: params.blockedId });
-    return true;
+    return {
+      success: true,
+      reportCreated: data?.report_created ?? false,
+    };
   } catch (error) {
     logger.error("Block user error", error);
-    return false;
+    return { success: false };
   }
 }
 

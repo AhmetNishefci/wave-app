@@ -58,6 +58,7 @@ export default function RadarScreen() {
     isAdvertising,
     permissionStatus,
     nearbyPeers,
+    blockedUserIds,
     error,
     proximityAlertPending,
   } = useBleStore();
@@ -76,6 +77,10 @@ export default function RadarScreen() {
     const filterAge = agePreferenceMin != null && agePreferenceMax != null;
 
     for (const [token, peer] of nearbyPeers) {
+      // Block filter: hide peers whose userId is in the blocked set
+      if (peer.userId && blockedUserIds.has(peer.userId)) {
+        continue;
+      }
       // Gender filter: show if no preference, preference is "both", gender matches, or gender unknown
       if (filterGender && peer.gender && peer.gender !== genderPreference) {
         continue;
@@ -90,7 +95,7 @@ export default function RadarScreen() {
     }
 
     return filtered;
-  }, [nearbyPeers, genderPreference, agePreferenceMin, agePreferenceMax]);
+  }, [nearbyPeers, blockedUserIds, genderPreference, agePreferenceMin, agePreferenceMax]);
 
   // Only count incoming waves from wavers still visible on the radar
   // AND matching gender preference (prevent phantom wave notifications).
@@ -315,6 +320,12 @@ export default function RadarScreen() {
       store.removePendingWave(peer.ephemeralToken);
       notifyError();
       setToast({ message: t("radar.waveTooFast"), variant: "error" });
+    } else if (result.status === "blocked") {
+      store.removePendingWave(peer.ephemeralToken);
+      // Remove blocked peer from radar immediately and prevent flicker on BLE rediscovery
+      useBleStore.getState().removePeer(peer.ephemeralToken);
+      if (peer.userId) useBleStore.getState().addBlockedUserId(peer.userId);
+      setToast({ message: t("radar.blockedWave"), variant: "error" });
     } else if (result.status === "match") {
       store.removePendingWave(peer.ephemeralToken);
       if (result.match) useMatchStore.getState().addMatch(result.match);

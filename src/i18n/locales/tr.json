@@ -163,6 +163,7 @@
     "waveUndoneToast": "Wave geri alındı",
     "alreadyMatchedToast": "Bu kişiyle zaten eşleştin!",
     "waveTooFast": "Çok hızlı wave gönderiyorsun. Biraz bekle.",
+    "blockedWave": "Bu kişi artık mevcut değil.",
     "couldntWave": "Wave gönderilemedi. Tekrar dene.",
     "couldntUndo": "Wave geri alınamadı. Eşleşmiş veya süresi dolmuş olabilir.",
     "permissionsRequired": "İzinler gerekli",

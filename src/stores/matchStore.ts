@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Match, ContactHandles } from "@/types";
+import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
 
 interface MatchState {
@@ -136,8 +137,27 @@ export const useMatchStore = create<MatchState>()(
           const removed = state.matchesById.get(matchId);
           const next = new Map(state.matchesById);
           next.delete(matchId);
+
+          // Clean up matchedTokens so the peer reverts to "Wave" on radar
+          let nextTokens = state.matchedTokens;
+          let nextHandles = state.matchedHandles;
+          if (removed) {
+            const peers = useBleStore.getState().nearbyPeers;
+            for (const [token, peer] of peers) {
+              if (peer.userId === removed.matchedUserId && state.matchedTokens.has(token)) {
+                nextTokens = new Set(state.matchedTokens);
+                nextTokens.delete(token);
+                nextHandles = new Map(state.matchedHandles);
+                nextHandles.delete(token);
+                break;
+              }
+            }
+          }
+
           return {
             matchesById: next,
+            matchedTokens: nextTokens,
+            matchedHandles: nextHandles,
             latestUnseenMatch:
               state.latestUnseenMatch?.matchId === matchId
                 ? null

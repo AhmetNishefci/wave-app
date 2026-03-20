@@ -163,6 +163,7 @@
     "waveUndoneToast": "Wave annullato",
     "alreadyMatchedToast": "Hai già fatto match con questa persona!",
     "waveTooFast": "Stai mandando wave troppo velocemente. Aspetta un attimo.",
+    "blockedWave": "Questa persona non è più disponibile.",
     "couldntWave": "Impossibile inviare il wave. Riprova.",
     "couldntUndo": "Impossibile annullare il wave. Potrebbe essere già stato matchato o scaduto.",
     "permissionsRequired": "Permessi necessari",

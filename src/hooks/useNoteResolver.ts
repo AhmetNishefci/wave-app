@@ -4,7 +4,7 @@ import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
 
 const POLL_INTERVAL_MS = 30_000;
-const FULL_REFRESH_TICKS = 4;
+const FULL_REFRESH_TICKS = 2; // Re-check all peers every 60s (2 × 30s) for block status updates
 
 /**
  * Polls the server to resolve peer notes AND block status for tokens
@@ -126,6 +126,9 @@ function processNotes(
     dataMap.set(row.token, { note: row.note, userId: row.peer_user_id });
     if (row.is_blocked) {
       blockedTokens.add(row.token);
+      if (row.peer_user_id) {
+        useBleStore.getState().addBlockedUserId(row.peer_user_id);
+      }
     }
   }
 

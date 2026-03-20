@@ -163,6 +163,7 @@
     "waveUndoneToast": "Wave rückgängig gemacht",
     "alreadyMatchedToast": "Ihr habt bereits gematcht!",
     "waveTooFast": "Du wavest zu schnell. Warte kurz.",
+    "blockedWave": "Diese Person ist nicht mehr verfügbar.",
     "couldntWave": "Wave konnte nicht gesendet werden. Versuch's nochmal.",
     "couldntUndo": "Rückgängig machen fehlgeschlagen. Es wurde vielleicht schon gematcht oder ist abgelaufen.",
     "permissionsRequired": "Berechtigungen erforderlich",

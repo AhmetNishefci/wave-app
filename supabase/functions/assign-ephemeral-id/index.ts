@@ -89,28 +89,51 @@ serve(async (req: Request) => {
     // Token expires in 15 minutes
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    // Insert new ephemeral ID
-    const { data, error: insertError } = await adminClient
+    // Insert new ephemeral ID. If it fails (e.g., unique constraint race
+    // when two requests fire simultaneously), deactivate again and retry once.
+    let data: any = null;
+    const insertPayload = {
+      user_id: userId,
+      token,
+      expires_at: expiresAt,
+      is_active: true,
+      note: profileData?.note ?? null,
+    };
+
+    const { data: firstAttempt, error: firstError } = await adminClient
       .from("ephemeral_ids")
-      .insert({
-        user_id: userId,
-        token,
-        expires_at: expiresAt,
-        is_active: true,
-        note: profileData?.note ?? null,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
-    if (insertError) {
-      console.error("Failed to insert ephemeral ID:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to generate token" }),
-        {
-          status: 500,
-          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-        },
-      );
+    if (firstError) {
+      // Retry: deactivate any token the concurrent request may have created, then insert again
+      console.warn("Ephemeral ID insert conflict, retrying:", firstError.message);
+      await adminClient
+        .from("ephemeral_ids")
+        .update({ is_active: false })
+        .eq("user_id", userId)
+        .eq("is_active", true);
+
+      const { data: retryAttempt, error: retryError } = await adminClient
+        .from("ephemeral_ids")
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (retryError) {
+        console.error("Failed to insert ephemeral ID after retry:", retryError);
+        return new Response(
+          JSON.stringify({ error: "Failed to generate token" }),
+          {
+            status: 500,
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          },
+        );
+      }
+      data = retryAttempt;
+    } else {
+      data = firstAttempt;
     }
 
     // Compute age from date_of_birth

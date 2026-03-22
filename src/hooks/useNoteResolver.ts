@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/services/supabase";
 import { useBleStore } from "@/stores/bleStore";
+import { useMatchStore } from "@/stores/matchStore";
 import type { NearbyPeer } from "@/types";
 import { logger } from "@/utils/logger";
 
@@ -117,8 +118,16 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
     };
 
     tick();
+    // Fast second tick: BLE needs a few seconds to discover peers after
+    // discovery starts. The immediate tick() above usually finds no peers yet.
+    // This catches peers discovered in the first few seconds and resolves their
+    // userId, notes, blocks, and preferences quickly (~3s instead of ~30s).
+    const earlyTick = setTimeout(tick, 2_000);
     const interval = setInterval(tick, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(earlyTick);
+      clearInterval(interval);
+    };
   }, [isDiscoveryActive]);
 }
 
@@ -225,4 +234,20 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
 
     return changed ? { nearbyPeers: next } : state;
   });
+
+  // Bridge: sync matchedTokens from persisted matches.
+  // After app restart or token rotation, matchedTokens is empty but matchesById
+  // is persisted. When a peer's userId is resolved, check if they're a match and
+  // re-add their current token to matchedTokens so PeerRow shows "Matched".
+  const matchState = useMatchStore.getState();
+  for (const [token, { userId }] of dataMap) {
+    if (userId && !blockedTokens.has(token) && !matchState.matchedTokens.has(token)) {
+      for (const m of matchState.matchesById.values()) {
+        if (m.matchedUserId === userId) {
+          useMatchStore.getState().addMatchedToken(token);
+          break;
+        }
+      }
+    }
+  }
 }

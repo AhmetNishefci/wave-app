@@ -28,9 +28,14 @@ export function PeerRow({
   const wavePending = useWaveStore(
     (s) => s.pendingWaves.get(peer.ephemeralToken) ?? null,
   );
-  const isAlreadyMatched = useMatchStore(
-    (s) => s.matchedTokens.has(peer.ephemeralToken),
-  );
+  const isAlreadyMatched = useMatchStore((s) => {
+    if (s.matchedTokens.has(peer.ephemeralToken)) return true;
+    if (!peer.userId) return false;
+    for (const m of s.matchesById.values()) {
+      if (m.matchedUserId === peer.userId) return true;
+    }
+    return false;
+  });
   const hasWavedAtMe = useWaveStore(
     (s) => s.incomingWaveTokens.includes(peer.ephemeralToken),
   );

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { AppState } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/stores/authStore";
 import { useMatchStore } from "@/stores/matchStore";
@@ -30,9 +31,24 @@ export function useNotifications() {
   const router = useRouter();
   const responseListener = useRef<{ remove: () => void } | null>(null);
 
-  // Register for push notifications when authenticated
+  // Register for push notifications when authenticated and app is in foreground.
+  // iOS blocks Keychain access when the app is launched in the background with
+  // the device locked, causing "User interaction is not allowed" errors.
   useEffect(() => {
     if (!userId || !registerForPushNotifications) return;
+
+    if (AppState.currentState !== "active") {
+      // App launched in background — defer registration until foregrounded
+      const sub = AppState.addEventListener("change", (state) => {
+        if (state === "active") {
+          registerForPushNotifications!().catch((err) => {
+            logger.error("Push registration failed", err);
+          });
+          sub.remove();
+        }
+      });
+      return () => sub.remove();
+    }
 
     registerForPushNotifications().catch((err) => {
       logger.error("Push registration failed", err);

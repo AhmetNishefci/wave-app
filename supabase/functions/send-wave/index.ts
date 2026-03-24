@@ -108,7 +108,7 @@ serve(async (req: Request) => {
     let action: "undo" | null | undefined;
     try {
       const rawBody = await req.json();
-      const parsed = parseBody(rawBody, sendWaveSchema);
+      const parsed = parseBody<{ target_ephemeral_token: string; action?: "undo" | null }>(rawBody, sendWaveSchema);
       if (parsed.error) {
         return new Response(
           JSON.stringify({ error: parsed.error }),
@@ -118,8 +118,8 @@ serve(async (req: Request) => {
           },
         );
       }
-      target_ephemeral_token = parsed.data.target_ephemeral_token;
-      action = parsed.data.action;
+      target_ephemeral_token = parsed.data!.target_ephemeral_token;
+      action = parsed.data!.action;
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),

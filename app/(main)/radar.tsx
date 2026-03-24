@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  SectionList,
+  FlatList,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -33,8 +33,7 @@ import { Toast } from "@/components/Toast";
 import { PeerRow } from "@/components/PeerRow";
 import { PeerDetailModal } from "@/components/PeerDetailModal";
 import { ScanPulse } from "@/components/ScanPulse";
-import type { NearbyPeer, DistanceZone } from "@/types";
-import { getDistanceZone } from "@/types";
+import type { NearbyPeer } from "@/types";
 import { logger } from "@/utils/logger";
 import { playWaveSent } from "@/utils/sound";
 import { useNoteResolver } from "@/hooks/useNoteResolver";
@@ -45,7 +44,6 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { saveNote } from "@/services/profile";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@/constants/colors";
-import { ZONE_CONFIG } from "@/constants/zones";
 
 const PEER_DISPLAY_CAP = 50;
 
@@ -64,12 +62,6 @@ function LiveDot() {
   );
 }
 
-interface ZoneSection {
-  zone: DistanceZone;
-  title: string;
-  color: string;
-  data: NearbyPeer[];
-}
 
 export default function RadarScreen() {
   const { t } = useTranslation();
@@ -86,7 +78,7 @@ export default function RadarScreen() {
   } = useBleStore();
   const { currentToken } = useTokenStore();
   const rawIncomingWaveTokens = useWaveStore((s) => s.incomingWaveTokens);
-  const matchedTokens = useMatchStore((s) => s.matchedTokens);
+  const matchesById = useMatchStore((s) => s.matchesById);
   const myGender = useAuthStore((s) => s.gender);
   const myAge = useAuthStore((s) => s.age);
   const genderPreference = useAuthStore((s) => s.genderPreference);
@@ -103,9 +95,23 @@ export default function RadarScreen() {
     const filterAge = agePreferenceMin != null && agePreferenceMax != null;
 
     for (const [token, peer] of nearbyPeers) {
+      // Resolution gate: only show peers whose userId has been resolved.
+      // This guarantees zero duplicates (dedup by userId is reliable) and
+      // ensures all filters (block, match, preference) work immediately.
+      // Peers appear ~1s after BLE discovery (fast resolution tick).
+      if (!peer.userId) continue;
+
       // Block filter: hide peers whose userId is in the blocked set
-      if (peer.userId && blockedUserIds.has(peer.userId)) {
+      if (blockedUserIds.has(peer.userId)) {
         continue;
+      }
+      // Match filter: hide already-matched peers (they belong in History)
+      {
+        let isMatched = false;
+        for (const m of matchesById.values()) {
+          if (m.matchedUserId === peer.userId) { isMatched = true; break; }
+        }
+        if (isMatched) continue;
       }
       // Forward filter: does this peer match MY preferences?
       if (filterGender && peer.gender && peer.gender !== genderPreference) {
@@ -147,7 +153,7 @@ export default function RadarScreen() {
     }
 
     return filtered;
-  }, [nearbyPeers, blockedUserIds, myGender, myAge, genderPreference, agePreferenceMin, agePreferenceMax]);
+  }, [nearbyPeers, blockedUserIds, matchesById, myGender, myAge, genderPreference, agePreferenceMin, agePreferenceMax]);
 
   // Only count incoming waves from wavers still visible on the radar
   // AND matching gender preference (prevent phantom wave notifications).
@@ -204,60 +210,24 @@ export default function RadarScreen() {
     setRefreshing(false);
   }, [isDiscoveryActive]);
 
-  const sections = useMemo<ZoneSection[]>(() => {
+  const sortedPeers = useMemo<NearbyPeer[]>(() => {
     const peers = Array.from(filteredPeers.values());
-    const groups: Record<DistanceZone, NearbyPeer[]> = {
-      HERE: [],
-      CLOSE: [],
-      NEARBY: [],
-    };
-
-    for (const peer of peers) {
-      const zone = getDistanceZone(peer.rssi);
-      groups[zone].push(peer);
-    }
-
-    // Sort within each zone: incoming wavers first, matched second, then RSSI
     const incomingSet = new Set(rawIncomingWaveTokens);
-    for (const zone of Object.keys(groups) as DistanceZone[]) {
-      groups[zone].sort((a, b) => {
-        const aPriority = incomingSet.has(a.ephemeralToken) ? 2
-          : matchedTokens.has(a.ephemeralToken) ? 1 : 0;
-        const bPriority = incomingSet.has(b.ephemeralToken) ? 2
-          : matchedTokens.has(b.ephemeralToken) ? 1 : 0;
-        if (aPriority !== bPriority) return bPriority - aPriority;
-        return b.rssi - a.rssi;
-      });
+
+    // Sort: incoming wavers first, then by discovery time (stable order — no jumping)
+    peers.sort((a, b) => {
+      const aPriority = incomingSet.has(a.ephemeralToken) ? 1 : 0;
+      const bPriority = incomingSet.has(b.ephemeralToken) ? 1 : 0;
+      if (aPriority !== bPriority) return bPriority - aPriority;
+      return a.discoveredAt - b.discoveredAt;
+    });
+
+    if (!showAllPeers && peers.length > PEER_DISPLAY_CAP) {
+      return peers.slice(0, PEER_DISPLAY_CAP);
     }
 
-    const order: DistanceZone[] = ["HERE", "CLOSE", "NEARBY"];
-    const allSections = order
-      .filter((zone) => groups[zone].length > 0)
-      .map((zone) => ({
-        zone,
-        title: ZONE_CONFIG[zone].label,
-        color: ZONE_CONFIG[zone].color,
-        data: groups[zone],
-      }));
-
-    // Apply peer cap: limit total displayed peers across all zones
-    if (!showAllPeers) {
-      let remaining = PEER_DISPLAY_CAP;
-      for (const section of allSections) {
-        if (remaining <= 0) {
-          section.data = [];
-        } else if (section.data.length > remaining) {
-          section.data = section.data.slice(0, remaining);
-          remaining = 0;
-        } else {
-          remaining -= section.data.length;
-        }
-      }
-      return allSections.filter((s) => s.data.length > 0);
-    }
-
-    return allSections;
-  }, [filteredPeers, showAllPeers, rawIncomingWaveTokens, matchedTokens]);
+    return peers;
+  }, [filteredPeers, showAllPeers, rawIncomingWaveTokens]);
 
   const totalPeers = filteredPeers.size;
 
@@ -430,19 +400,6 @@ export default function RadarScreen() {
     [handleWave, handleUndo, isConnected],
   );
 
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: ZoneSection }) => (
-      <View className="flex-row items-center mb-2 mt-4">
-        <Text className={`text-lg font-bold ${section.color}`}>
-          {section.title}
-        </Text>
-        <Text className="text-wave-muted text-sm ml-2">
-          {t("radar.people", { count: section.data.length })}
-        </Text>
-      </View>
-    ),
-    [],
-  );
 
   // Show permission gate if not granted
   if (permissionStatus !== "granted" && !isDiscoveryActive) {
@@ -647,14 +604,12 @@ export default function RadarScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Distance zone sections */}
-      <SectionList
-        sections={sections}
+      {/* Peer list */}
+      <FlatList
+        data={sortedPeers}
         keyExtractor={(item) => item.ephemeralToken}
         renderItem={renderPeer}
-        renderSectionHeader={renderSectionHeader}
         contentContainerStyle={{ paddingBottom: 40 }}
-        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

@@ -84,7 +84,14 @@ export function startScanning(bleManager: BleManager): void {
     { allowDuplicates: true },
     (error, device) => {
       if (error) {
-        logger.error("Scan error", error);
+        // BLE reset/PoweredOff are transient iOS events — the adapter recovers
+        // automatically via onStateChange → resume(). Don't send to Sentry.
+        const isTransient = error.message?.includes("resetting") || error.message?.includes("powered off");
+        if (isTransient) {
+          logger.warn("Scan interrupted (transient)", error.message);
+        } else {
+          logger.error("Scan error", error);
+        }
         useBleStore.setState({ error: error.message, isScanning: false });
         return;
       }

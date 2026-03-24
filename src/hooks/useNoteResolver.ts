@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/services/supabase";
 import { useBleStore } from "@/stores/bleStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { useWaveStore } from "@/stores/waveStore";
 import type { NearbyPeer } from "@/types";
 import { logger } from "@/utils/logger";
 
@@ -27,6 +28,11 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
       tickCountRef.current = 0;
     }
   }, [isDiscoveryActive]);
+
+  // Trigger fast resolution when new unresolved peers appear.
+  // This eliminates the duplicate-peer window when a user gets a new token
+  // (kill/reopen or rotation) and their BLE address changed.
+  const pendingFastTick = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isDiscoveryActive) return;
@@ -86,6 +92,8 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
                   peer_gender_preference: null,
                   peer_age_preference_min: null,
                   peer_age_preference_max: null,
+                  has_waved_at_me: false,
+                  i_waved_at_them: false,
                 })),
               );
             }
@@ -107,6 +115,8 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
           peer_gender_preference: string | null;
           peer_age_preference_min: number | null;
           peer_age_preference_max: number | null;
+          has_waved_at_me: boolean;
+          i_waved_at_them: boolean;
         }[];
 
         processNotes(batchedTokens, rows);
@@ -118,15 +128,46 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
     };
 
     tick();
-    // Fast second tick: BLE needs a few seconds to discover peers after
-    // discovery starts. The immediate tick() above usually finds no peers yet.
-    // This catches peers discovered in the first few seconds and resolves their
-    // userId, notes, blocks, and preferences quickly (~3s instead of ~30s).
-    const earlyTick = setTimeout(tick, 2_000);
+    // Fast early ticks on startup: BLE discovers peers within ~300ms but the
+    // immediate tick() above finds no peers yet.
+    const earlyTick1 = setTimeout(tick, 1_000);
+    const earlyTick2 = setTimeout(tick, 3_000);
     const interval = setInterval(tick, POLL_INTERVAL_MS);
+
+    // Subscribe to nearbyPeers: when new unresolved tokens appear, trigger a
+    // fast resolution tick (~1s debounce). This catches token rotations and
+    // kill/reopen during an active session — not just on startup.
+    const unsubscribe = useBleStore.subscribe((state, prev) => {
+      if (state.nearbyPeers === prev.nearbyPeers) return;
+      let hasNew = false;
+      for (const token of state.nearbyPeers.keys()) {
+        if (!prev.nearbyPeers.has(token) && !resolvedRef.current.has(token)) {
+          hasNew = true;
+          break;
+        }
+      }
+      if (hasNew && !pendingFastTick.current) {
+        pendingFastTick.current = setTimeout(() => {
+          pendingFastTick.current = null;
+          // If a tick is already in-flight, retry shortly after
+          if (inFlightRef.current) {
+            pendingFastTick.current = setTimeout(() => {
+              pendingFastTick.current = null;
+              tick();
+            }, 1_000);
+          } else {
+            tick();
+          }
+        }, 1_000);
+      }
+    });
+
     return () => {
-      clearTimeout(earlyTick);
+      clearTimeout(earlyTick1);
+      clearTimeout(earlyTick2);
+      if (pendingFastTick.current) clearTimeout(pendingFastTick.current);
       clearInterval(interval);
+      unsubscribe();
     };
   }, [isDiscoveryActive]);
 }
@@ -139,6 +180,8 @@ interface PeerRow {
   peer_gender_preference?: string | null;
   peer_age_preference_min?: number | null;
   peer_age_preference_max?: number | null;
+  has_waved_at_me?: boolean;
+  i_waved_at_them?: boolean;
 }
 
 function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
@@ -154,6 +197,9 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
   >();
   const blockedTokens = new Set<string>();
 
+  const incomingWaveTokens = new Set<string>();
+  const outgoingWaveTokens = new Set<string>();
+
   for (const row of rows) {
     dataMap.set(row.token, {
       note: row.note,
@@ -167,6 +213,12 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
       if (row.peer_user_id) {
         useBleStore.getState().addBlockedUserId(row.peer_user_id);
       }
+    }
+    if (row.has_waved_at_me) {
+      incomingWaveTokens.add(row.token);
+    }
+    if (row.i_waved_at_them) {
+      outgoingWaveTokens.add(row.token);
     }
   }
 
@@ -247,6 +299,32 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
           useMatchStore.getState().addMatchedToken(token);
           break;
         }
+      }
+    }
+  }
+
+  // Bridge: sync incoming wave tokens from server.
+  // After app restart, incomingWaveTokens is empty (in-memory only).
+  // The server knows which peers have pending waves targeting us — rebuild
+  // the state so PeerRow shows "Wave back" instead of "Wave".
+  if (incomingWaveTokens.size > 0) {
+    const waveState = useWaveStore.getState();
+    for (const token of incomingWaveTokens) {
+      if (!waveState.incomingWaveTokens.includes(token)) {
+        useWaveStore.getState().addIncomingWaveToken(token);
+      }
+    }
+  }
+
+  // Bridge: sync outgoing wave tokens from server.
+  // After app restart, pendingWaves is empty (in-memory only).
+  // The server knows which peers we have pending waves to — rebuild
+  // the state so PeerRow shows "Undo" instead of "Wave".
+  if (outgoingWaveTokens.size > 0) {
+    const waveState = useWaveStore.getState();
+    for (const token of outgoingWaveTokens) {
+      if (!waveState.pendingWaves.has(token)) {
+        useWaveStore.getState().addPendingWave(token);
       }
     }
   }

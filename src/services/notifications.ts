@@ -106,13 +106,19 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
       return pushToken;
     } catch (err: any) {
-      const isApsError = err?.message?.includes("aps-environment");
-      if (isApsError && attempt < MAX_RETRIES) {
-        logger.wave(`Push token attempt ${attempt} failed (aps-environment), retrying in ${RETRY_DELAY}ms...`);
+      const msg = err?.message ?? "";
+      const isRetryable = msg.includes("aps-environment") || msg.includes("503") || msg.includes("SERVICE_UNAVAILABLE") || msg.includes("isTransient");
+      if (isRetryable && attempt < MAX_RETRIES) {
+        logger.wave(`Push token attempt ${attempt} failed (transient), retrying in ${RETRY_DELAY}ms...`);
         await new Promise((r) => setTimeout(r, RETRY_DELAY));
         continue;
       }
-      logger.error("Failed to get push token", err);
+      // Transient failures after all retries — warn, don't send to Sentry
+      if (isRetryable) {
+        logger.warn("Push token registration failed (transient, all retries exhausted)", msg);
+      } else {
+        logger.error("Failed to get push token", err);
+      }
       return null;
     }
   }

@@ -436,5 +436,11 @@
     "27": "Senin hakkında üç şey tahmin edeceğim — hazır mısın?",
     "28": "Wave'i indirmene ne sebep oldu?",
     "29": "Hakkımda ilk izlenim... hiçbir şeye dayanarak 😂"
+  },
+
+  "tabs": {
+    "radar": "Radar",
+    "matches": "Eşleşmeler",
+    "settings": "Ayarlar"
   }
 }

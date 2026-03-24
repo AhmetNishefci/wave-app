@@ -436,5 +436,11 @@
     "27": "Voy a adivinar tres cosas sobre ti — ¿listo/a?",
     "28": "¿Qué te hizo descargar Wave?",
     "29": "Primera impresión de mí basada en... absolutamente nada 😂"
+  },
+
+  "tabs": {
+    "radar": "Radar",
+    "matches": "Matches",
+    "settings": "Ajustes"
   }
 }

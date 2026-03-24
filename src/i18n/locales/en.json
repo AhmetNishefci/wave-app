@@ -436,5 +436,11 @@
     "27": "I\u2019m going to guess three things about you \u2014 ready?",
     "28": "What made you download Wave?",
     "29": "First impression of me based on... absolutely nothing \ud83d\ude02"
+  },
+
+  "tabs": {
+    "radar": "Radar",
+    "matches": "Matches",
+    "settings": "Settings"
   }
 }

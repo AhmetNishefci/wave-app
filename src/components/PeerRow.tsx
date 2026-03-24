@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useWaveStore } from "@/stores/waveStore";
 import { useMatchStore } from "@/stores/matchStore";
 import type { NearbyPeer } from "@/types";
-import { getAvatarForToken, getTimeSince, getDistanceZone } from "@/types";
+import { getAvatarForToken, getDistanceZone } from "@/types";
 import { ZONE_CONFIG } from "@/constants/zones";
 import { WAVE_EXPIRY_MINUTES } from "@/services/ble/constants";
 
@@ -43,7 +43,6 @@ export function PeerRow({
     () => getAvatarForToken(peer.ephemeralToken),
     [peer.ephemeralToken],
   );
-  const freshness = getTimeSince(peer.lastSeen);
   const zone = getDistanceZone(peer.rssi);
   const displayName = peer.note || t("peerRow.someone", { zone: ZONE_CONFIG[zone].label.toLowerCase() });
 
@@ -115,7 +114,14 @@ export function PeerRow({
               <Text className="text-orange-400 text-xs ml-2">{t("peerRow.waitingForWaveBack")}</Text>
             ) : null}
           </View>
-          <Text className="text-wave-muted text-xs">{freshness}</Text>
+          <View className="flex-row items-center">
+            <View className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+              zone === "HERE" ? "bg-green-400" : zone === "CLOSE" ? "bg-blue-400" : "bg-wave-muted"
+            }`} />
+            <Text className={`text-xs ${
+              zone === "HERE" ? "text-green-400" : zone === "CLOSE" ? "text-blue-400" : "text-wave-muted"
+            }`}>{ZONE_CONFIG[zone].label}</Text>
+          </View>
         </View>
       </Pressable>
 

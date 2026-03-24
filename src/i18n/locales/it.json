@@ -436,5 +436,11 @@
     "27": "Provo a indovinare tre cose su di te — pronto/a?",
     "28": "Cosa ti ha fatto scaricare Wave?",
     "29": "Prima impressione su di me basata su... assolutamente nulla 😂"
+  },
+
+  "tabs": {
+    "radar": "Radar",
+    "matches": "Match",
+    "settings": "Impostazioni"
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import * as Sentry from "@sentry/react-native";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { useMatchStore } from "@/stores/matchStore";
@@ -15,6 +16,7 @@ import { preloadSounds } from "@/utils/sound";
 import { COLORS } from "@/constants/colors";
 
 export default function MainLayout() {
+  const { t } = useTranslation();
   const router = useRouter();
   const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
   const unseenCount = useMatchStore((s) => s.unseenCount);
@@ -101,7 +103,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="radar"
         options={{
-          title: "Radar",
+          title: t("tabs.radar"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="radio-outline" size={size} color={color} />
           ),
@@ -110,7 +112,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "Matches",
+          title: t("tabs.matches"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart-outline" size={size} color={color} />
           ),
@@ -127,7 +129,7 @@ export default function MainLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("tabs.settings"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),

@@ -100,7 +100,7 @@ async function requestAndroidPermissions(): Promise<BlePermissionStatus> {
       return "denied";
     }
   } catch (error) {
-    logger.error("Permission request failed", error);
+    logger.warn("Permission request failed (user can retry)", error);
     return "denied";
   }
 }

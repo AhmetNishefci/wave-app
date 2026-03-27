@@ -7,6 +7,7 @@ import { useTokenStore } from "@/stores/tokenStore";
 import { useAuthStore } from "@/stores/authStore";
 import { fetchNewToken } from "@/services/wave/ephemeralId";
 import { fetchMatchesFromServer } from "@/services/wave/matches";
+import { unsubscribeFromMatches, subscribeToMatches } from "@/services/wave/realtime";
 import { getCurrentLocation, updateLocationOnServer } from "@/services/location";
 import { logger } from "@/utils/logger";
 
@@ -80,6 +81,18 @@ export function useBleLifecycle() {
           fetchMatchesFromServer().catch((e) =>
             logger.warn("Match reconciliation on foreground failed (non-fatal)", e),
           );
+
+          // Force Realtime reconnection. After long background (iOS suspends
+          // the app), the WebSocket dies silently — no CLOSED/ERROR event fires.
+          // The Supabase client thinks the channel is still SUBSCRIBED but the
+          // TCP connection is dead. Re-subscribing ensures wave/match/undo
+          // broadcasts arrive immediately after foreground.
+          const userId = useAuthStore.getState().userId;
+          if (userId) {
+            unsubscribeFromMatches();
+            subscribeToMatches(userId);
+            logger.wave("Realtime re-subscribed on foreground");
+          }
 
           // Refresh location so proximity alerts stay fresh while backgrounded
           // Server rate-limits to 30s, so this is safe to call on every foreground.

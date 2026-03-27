@@ -153,7 +153,7 @@ serve(async (req: Request) => {
     );
 
     if (queryError) {
-      console.error("find_nearby_users error:", queryError);
+      console.warn("find_nearby_users error (non-fatal):", queryError);
       // Non-fatal: location was saved, just can't notify
       return new Response(
         JSON.stringify({ status: "ok", nearby_count: 0, notified_count: 0 }),
@@ -264,7 +264,7 @@ serve(async (req: Request) => {
         .insert(notifRecords);
 
       if (insertError) {
-        console.error("Failed to record notifications:", insertError);
+        console.warn("Failed to record notifications (non-fatal):", insertError);
         // Non-fatal
       }
     }

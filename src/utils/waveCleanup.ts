@@ -8,22 +8,31 @@
  */
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
+import { logger } from "@/utils/logger";
 
 export function clearWaveStateForUser(userId: string): void {
   const peers = useBleStore.getState().nearbyPeers;
   const waveState = useWaveStore.getState();
+  let cleaned = 0;
 
   for (const [token, peer] of peers) {
     if (peer.userId === userId) {
       if (waveState.pendingWaves.has(token)) {
         useWaveStore.getState().removePendingWave(token);
+        cleaned++;
       }
       if (waveState.incomingWaveTokens.includes(token)) {
         useWaveStore.getState().removeIncomingWaveToken(token);
+        cleaned++;
       }
       if (waveState.wavingBackTokens.has(token)) {
         useWaveStore.getState().removeWavingBack(token);
+        cleaned++;
       }
     }
+  }
+
+  if (cleaned > 0) {
+    logger.wave("Cleaned wave state for user", { userId, cleaned });
   }
 }

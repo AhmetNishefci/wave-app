@@ -137,7 +137,7 @@ serve(async (req: Request) => {
         );
 
       if (reportError) {
-        console.error("Failed to create report:", reportError);
+        console.warn("Failed to create report (non-fatal):", reportError);
         // Non-fatal — block was created, report failed
       } else {
         reportCreated = true;
@@ -149,7 +149,7 @@ serve(async (req: Request) => {
       try {
         await sendReportEmails(user, blocked_id, reason!, details ?? null);
       } catch (err) {
-        console.error("Report email error (non-fatal):", err);
+        console.warn("Report email error (non-fatal):", err);
       }
     }
 
@@ -198,7 +198,7 @@ serve(async (req: Request) => {
         });
         adminClient.removeChannel(ch);
       } catch (err) {
-        console.error("match_removed broadcast failed:", err);
+        console.warn("match_removed broadcast failed (non-fatal):", err);
       }
     }
 

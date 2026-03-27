@@ -37,8 +37,12 @@ export async function getFreshSession(): Promise<Session | null> {
     }
 
     return refreshed.session;
-  } catch (err) {
-    logger.warn("Session refresh timed out or failed", err);
+  } catch (err: unknown) {
+    const isTimeout = err instanceof Error && err.message === "session_refresh_timeout";
+    logger.warn(isTimeout ? "Session refresh timed out" : "Session refresh failed", {
+      reason: isTimeout ? "timeout" : (err instanceof Error ? err.message : "unknown"),
+      timeoutMs: SESSION_REFRESH_TIMEOUT_MS,
+    });
     return null;
   }
 }

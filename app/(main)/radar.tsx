@@ -276,7 +276,7 @@ export default function RadarScreen() {
         getCurrentLocation().then((loc) => {
           if (loc) {
             updateLocationOnServer(loc.latitude, loc.longitude).catch((err) =>
-              logger.error("Location update failed (non-fatal)", err),
+              logger.warn("Location update failed (non-fatal)", err),
             );
           }
         });
@@ -377,7 +377,16 @@ export default function RadarScreen() {
             notifySuccess();
             return;
           }
+          logger.warn("Retry after expired_token also failed", {
+            retryStatus: retry.status,
+            freshToken: freshToken.substring(0, 8),
+          });
           if (!isWaveBack) store.removePendingWave(freshToken);
+        } else {
+          logger.warn("No fresh token found for expired_token retry", {
+            userId: peer.userId,
+            expiredToken: peer.ephemeralToken.substring(0, 8),
+          });
         }
       }
       notifyError();

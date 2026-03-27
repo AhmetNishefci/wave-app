@@ -240,7 +240,7 @@ serve(async (req: Request) => {
         .insert(sentRecords);
 
       if (insertError) {
-        console.error("Failed to record engagement sends:", insertError);
+        console.warn("Failed to record engagement sends (non-fatal):", insertError);
       }
     }
 

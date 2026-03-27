@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/react-native";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { useMatchStore } from "@/stores/matchStore";
 import { useBleStore } from "@/stores/bleStore";
+import { useTokenStore } from "@/stores/tokenStore";
 import * as Notifications from "expo-notifications";
 import { useBleLifecycle } from "@/hooks/useBleLifecycle";
 import { useEphemeralRotation } from "@/hooks/useEphemeralRotation";
@@ -22,11 +23,20 @@ export default function MainLayout() {
   const unseenCount = useMatchStore((s) => s.unseenCount);
   const adapterState = useBleStore((s) => s.adapterState);
   const isDiscoveryActive = useBleStore((s) => s.isDiscoveryActive);
+  const hasToken = useTokenStore((s) => !!s.currentToken);
+  const tokenExpiresAt = useTokenStore((s) => s.tokenExpiresAt);
 
-  // Keep Sentry context updated with BLE state for crash diagnostics
+  // Keep Sentry context updated with device state for crash diagnostics
   useEffect(() => {
     Sentry.setContext("ble", { adapterState, isDiscoveryActive });
   }, [adapterState, isDiscoveryActive]);
+
+  useEffect(() => {
+    Sentry.setContext("token", {
+      hasToken,
+      expiresIn: tokenExpiresAt ? Math.round((tokenExpiresAt - Date.now()) / 1000) : null,
+    });
+  }, [hasToken, tokenExpiresAt]);
 
   // Sync app icon badge with unseen match count
   useEffect(() => {

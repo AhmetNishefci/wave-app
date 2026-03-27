@@ -103,7 +103,7 @@ serve(async (req: Request) => {
         });
         adminClient.removeChannel(ch);
       } catch (err) {
-        console.error("match_removed broadcast failed:", err);
+        console.warn("match_removed broadcast failed (non-fatal):", err);
         // Non-fatal — their local store will just have a stale entry
       }
     }

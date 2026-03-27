@@ -66,7 +66,7 @@ function createChannel(userId: string): void {
 
         // Fetch the handle via authenticated RPC (not from broadcast payload)
         fetchMatchHandle(data.match_id).catch((err) =>
-          logger.error("Failed to fetch match handle after realtime event", err),
+          logger.warn("Failed to fetch match handle after realtime event (non-fatal)", err),
         );
       }
     })

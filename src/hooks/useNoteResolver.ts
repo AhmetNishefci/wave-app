@@ -326,6 +326,9 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
     for (const existingToken of waveState.incomingWaveTokens) {
       if (batchedTokens.includes(existingToken) && !incomingWaveTokens.has(existingToken)) {
         useWaveStore.getState().removeIncomingWaveToken(existingToken);
+        logger.wave("Cleaned stale incoming wave (server says false)", {
+          token: existingToken.substring(0, 8),
+        });
       }
     }
   }
@@ -351,6 +354,9 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
     for (const existingToken of waveState.pendingWaves.keys()) {
       if (batchedTokens.includes(existingToken) && !outgoingWaveTokens.has(existingToken)) {
         useWaveStore.getState().removePendingWave(existingToken);
+        logger.wave("Cleaned stale pending wave (server says false)", {
+          token: existingToken.substring(0, 8),
+        });
       }
     }
   }

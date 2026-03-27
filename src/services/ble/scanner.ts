@@ -90,7 +90,7 @@ export function startScanning(bleManager: BleManager): void {
         if (isTransient) {
           logger.warn("Scan interrupted (transient)", error.message);
         } else {
-          logger.error("Scan error", error);
+          logger.warn("Scan error (user must restart discovery)", error);
         }
         useBleStore.setState({ error: error.message, isScanning: false });
         return;

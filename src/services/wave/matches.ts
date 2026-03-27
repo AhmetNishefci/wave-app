@@ -33,7 +33,7 @@ export async function fetchMatchesFromServer(): Promise<boolean> {
       .limit(PAGE_SIZE);
 
     if (error) {
-      logger.error("fetchMatchesFromServer error", error);
+      logger.warn("fetchMatchesFromServer error (retryable)", error);
       return false;
     }
 
@@ -52,7 +52,7 @@ export async function fetchMatchesFromServer(): Promise<boolean> {
 
     return data.length === PAGE_SIZE;
   } catch (err) {
-    logger.error("fetchMatchesFromServer exception", err);
+    logger.warn("fetchMatchesFromServer exception (retryable)", err);
     return false;
   }
 }
@@ -78,7 +78,7 @@ export async function loadMoreMatches(beforeCursor: string): Promise<boolean> {
       .limit(PAGE_SIZE);
 
     if (error) {
-      logger.error("loadMoreMatches error", error);
+      logger.warn("loadMoreMatches error (retryable)", error);
       return false;
     }
 
@@ -88,7 +88,7 @@ export async function loadMoreMatches(beforeCursor: string): Promise<boolean> {
 
     return data.length === PAGE_SIZE;
   } catch (err) {
-    logger.error("loadMoreMatches exception", err);
+    logger.warn("loadMoreMatches exception (retryable)", err);
     return false;
   }
 }
@@ -124,7 +124,7 @@ async function mergeServerMatches(
       }
     }
   } else if (handleError) {
-    logger.error("Failed to fetch match contact handles via RPC", handleError);
+    logger.warn("Failed to fetch match contact handles (non-fatal)", handleError);
   }
 
   const store = useMatchStore.getState();

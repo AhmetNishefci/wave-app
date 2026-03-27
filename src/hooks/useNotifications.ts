@@ -43,7 +43,7 @@ export function useNotifications() {
       const sub = AppState.addEventListener("change", (state) => {
         if (state === "active") {
           registerForPushNotifications!().catch((err) => {
-            logger.error("Push registration failed", err);
+            logger.warn("Push registration failed (non-fatal)", err);
           });
           sub.remove();
         }
@@ -52,7 +52,7 @@ export function useNotifications() {
     }
 
     registerForPushNotifications().catch((err) => {
-      logger.error("Push registration failed", err);
+      logger.warn("Push registration failed (non-fatal)", err);
     });
   }, [userId]);
 

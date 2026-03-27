@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   enabled: !__DEV__,
+  environment: __DEV__ ? "development" : "production",
   tracesSampleRate: 0.2,
   sendDefaultPii: false,
   enableAutoSessionTracking: true,

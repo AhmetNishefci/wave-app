@@ -115,7 +115,7 @@ export async function sendWave(
         return { status: "pending" };
       }
 
-      logger.error("Wave failed", error);
+      logger.warn("Wave failed (retryable)", error);
       return { status: "error" };
     }
 
@@ -176,7 +176,7 @@ export async function sendWave(
 
     return { status: "error" };
   } catch (error) {
-    logger.error("Wave error", error);
+    logger.warn("Wave error (retryable)", error);
     return { status: "error" };
   }
 }
@@ -201,7 +201,10 @@ export async function undoWave(
     });
 
     if (error) {
-      logger.error("Undo wave failed", error);
+      // Distinguish transient/expected errors from genuine failures.
+      // A 400 (undo_expired) is expected — user tapped undo too late.
+      // Network/timeout errors are genuine failures worth alerting.
+      logger.warn("Undo wave failed", error);
       return false;
     }
 
@@ -217,7 +220,7 @@ export async function undoWave(
     logger.wave("Wave undone", { token: targetEphemeralToken.substring(0, 8) });
     return true;
   } catch (error) {
-    logger.error("Undo wave error", error);
+    logger.warn("Undo wave error", error);
     return false;
   }
 }
@@ -237,14 +240,14 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
     });
 
     if (error) {
-      logger.error("Remove match failed", error);
+      logger.warn("Remove match failed (retryable)", error);
       return false;
     }
 
     logger.wave("Match removed", { matchId });
     return true;
   } catch (error) {
-    logger.error("Remove match error", error);
+    logger.warn("Remove match error (retryable)", error);
     return false;
   }
 }
@@ -281,7 +284,7 @@ export async function blockUser(params: {
     });
 
     if (error) {
-      logger.error("Block user failed", error);
+      logger.warn("Block user failed (retryable)", error);
       return { success: false };
     }
 
@@ -291,7 +294,7 @@ export async function blockUser(params: {
       reportCreated: (data as { report_created?: boolean })?.report_created ?? false,
     };
   } catch (error) {
-    logger.error("Block user error", error);
+    logger.warn("Block user error (retryable)", error);
     return { success: false };
   }
 }
@@ -306,14 +309,14 @@ export async function unblockUser(blockedId: string): Promise<boolean> {
     });
 
     if (error) {
-      logger.error("Unblock user failed", error);
+      logger.warn("Unblock user failed (retryable)", error);
       return false;
     }
 
     logger.wave("User unblocked", { blockedId });
     return true;
   } catch (error) {
-    logger.error("Unblock user error", error);
+    logger.warn("Unblock user error (retryable)", error);
     return false;
   }
 }
@@ -328,7 +331,7 @@ export async function getBlockedUsers(): Promise<
     const { data, error } = await supabase.rpc("get_blocked_users");
 
     if (error) {
-      logger.error("Get blocked users failed", error);
+      logger.warn("Get blocked users failed (retryable)", error);
       return [];
     }
 
@@ -338,7 +341,7 @@ export async function getBlockedUsers(): Promise<
       createdAt: row.created_at,
     }));
   } catch (error) {
-    logger.error("Get blocked users error", error);
+    logger.warn("Get blocked users error (retryable)", error);
     return [];
   }
 }

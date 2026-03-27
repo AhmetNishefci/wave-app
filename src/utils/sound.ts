@@ -39,7 +39,7 @@ function getWaveSentSound(): Promise<Audio.Sound | null> {
         );
         return sound;
       } catch (err) {
-        logger.error("Failed to load wave-sent sound", err);
+        logger.warn("Failed to load wave-sent sound (non-fatal)", err);
         waveSentPromise = null; // allow retry on next call
         return null;
       }
@@ -59,7 +59,7 @@ function getMatchSound(): Promise<Audio.Sound | null> {
         );
         return sound;
       } catch (err) {
-        logger.error("Failed to load match sound", err);
+        logger.warn("Failed to load match sound (non-fatal)", err);
         matchPromise = null; // allow retry on next call
         return null;
       }

@@ -99,7 +99,7 @@ serve(async (req: Request) => {
           .in("receipt_id", receiptIds);
       }
     } catch (receiptErr) {
-      console.error("Receipt check failed (non-fatal):", receiptErr);
+      console.warn("Receipt check failed (non-fatal):", receiptErr);
     }
 
     console.log("Cleanup completed successfully");

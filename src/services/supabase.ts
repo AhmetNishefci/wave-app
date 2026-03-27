@@ -1,6 +1,7 @@
 import "react-native-url-polyfill/auto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "@/utils/logger";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -50,6 +51,10 @@ export async function invokeWithTimeout<T = unknown>(
     return result as { data: T | null; error: { message: string } | null };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "timeout";
+    logger.warn(`Edge function ${functionName} failed: ${message}`, {
+      functionName,
+      timeoutMs,
+    });
     return { data: null, error: { message } };
   }
 }

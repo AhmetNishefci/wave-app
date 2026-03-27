@@ -31,7 +31,7 @@ export function MatchShareCard() {
     try {
       const uri = await viewShotRef.current?.capture?.();
       if (!uri) {
-        logger.error("MatchShareCard: capture returned no URI");
+        logger.warn("MatchShareCard: capture returned no URI");
         setSharing(false);
         return;
       }
@@ -40,7 +40,7 @@ export function MatchShareCard() {
         url: Platform.OS === "ios" ? uri : `file://${uri}`,
       });
     } catch (err) {
-      logger.error("MatchShareCard: share failed", err);
+      logger.warn("MatchShareCard: share failed", err);
     } finally {
       setSharing(false);
     }

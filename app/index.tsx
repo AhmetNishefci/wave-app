@@ -44,7 +44,7 @@ export default function IndexScreen() {
         if (retryCount < MAX_PROFILE_RETRIES) {
           const nextRetry = retryCount + 1;
           const delay = 2000 * nextRetry;
-          logger.error(
+          logger.warn(
             `Failed to fetch profile, retry ${nextRetry}/${MAX_PROFILE_RETRIES} in ${delay}ms`,
           );
           timerRef.current = setTimeout(

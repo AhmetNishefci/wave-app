@@ -61,7 +61,7 @@ export async function fetchProfile(): Promise<UserProfile | null> {
       .maybeSingle();
 
     if (error) {
-      logger.error("fetchProfile error", error);
+      logger.warn("fetchProfile error (retryable)", error);
       return null;
     }
 
@@ -79,7 +79,7 @@ export async function fetchProfile(): Promise<UserProfile | null> {
       dailyPushesEnabled: data?.daily_pushes_enabled ?? true,
     };
   } catch (err) {
-    logger.error("fetchProfile exception", err);
+    logger.warn("fetchProfile exception (retryable)", err);
     return null;
   }
 }
@@ -115,7 +115,7 @@ export async function saveDateOfBirth(dob: string): Promise<boolean> {
       .select("id");
 
     if (error) {
-      logger.error("saveDateOfBirth error", error);
+      logger.warn("saveDateOfBirth error (retryable)", error);
       return false;
     }
 
@@ -176,7 +176,7 @@ export async function saveGenderProfile(
       .select("id");
 
     if (error) {
-      logger.error("saveGenderProfile error", error);
+      logger.warn("saveGenderProfile error (retryable)", error);
       return false;
     }
 
@@ -227,7 +227,7 @@ export async function updateGenderPreference(
       .eq("id", user.id);
 
     if (error) {
-      logger.error("updateGenderPreference error", error);
+      logger.warn("updateGenderPreference error (retryable)", error);
       return false;
     }
 
@@ -262,7 +262,7 @@ export async function updateAgePreference(
       .eq("id", user.id);
 
     if (error) {
-      logger.error("updateAgePreference error", error);
+      logger.warn("updateAgePreference error (retryable)", error);
       return false;
     }
 
@@ -418,7 +418,7 @@ export async function saveNote(rawNote: string | null): Promise<boolean> {
       .select("id");
 
     if (error) {
-      logger.error("saveNote error", error);
+      logger.warn("saveNote error (retryable)", error);
       return false;
     }
 
@@ -469,7 +469,7 @@ export async function saveNearbyAlertsPreference(
       .eq("id", user.id);
 
     if (error) {
-      logger.error("saveNearbyAlertsPreference error", error);
+      logger.warn("saveNearbyAlertsPreference error (retryable)", error);
       return false;
     }
 
@@ -503,7 +503,7 @@ export async function saveDailyPushesPreference(
       .eq("id", user.id);
 
     if (error) {
-      logger.error("saveDailyPushesPreference error", error);
+      logger.warn("saveDailyPushesPreference error (retryable)", error);
       return false;
     }
 
@@ -565,9 +565,9 @@ export async function syncTimezoneAndActivity(): Promise<void> {
       .eq("id", user.id);
 
     if (error) {
-      logger.error("syncTimezoneAndActivity error", error);
+      logger.warn("syncTimezoneAndActivity error (non-fatal)", error);
     }
   } catch (err) {
-    logger.error("syncTimezoneAndActivity exception", err);
+    logger.warn("syncTimezoneAndActivity exception (non-fatal)", err);
   }
 }

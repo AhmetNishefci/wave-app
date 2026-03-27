@@ -82,7 +82,7 @@ export async function getCurrentLocation(): Promise<{
       longitude: location.coords.longitude,
     };
   } catch (err) {
-    logger.error("Failed to get current location", err);
+    logger.warn("Failed to get current location (non-fatal)", err);
     return null;
   }
 }
@@ -125,7 +125,7 @@ export async function updateLocationOnServer(
         return null;
       }
 
-      logger.error("updateLocationOnServer error", { message: error.message, detail });
+      logger.warn("updateLocationOnServer error (non-fatal)", { message: error.message, detail });
       return null;
     }
 
@@ -145,7 +145,7 @@ export async function updateLocationOnServer(
       notifiedCount: result.notified_count,
     };
   } catch (err) {
-    logger.error("updateLocationOnServer exception", err);
+    logger.warn("updateLocationOnServer exception (non-fatal)", err);
     return null;
   }
 }

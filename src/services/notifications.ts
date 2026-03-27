@@ -99,7 +99,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         );
 
       if (error) {
-        logger.error("Failed to save push token to Supabase", error);
+        logger.warn("Failed to save push token to Supabase (non-fatal)", error);
       } else {
         logger.wave("Push token registered with Supabase");
       }
@@ -107,7 +107,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return pushToken;
     } catch (err: any) {
       const msg = err?.message ?? "";
-      const isRetryable = msg.includes("aps-environment") || msg.includes("503") || msg.includes("SERVICE_UNAVAILABLE") || msg.includes("isTransient");
+      const isRetryable = msg.includes("aps-environment") || msg.includes("503") || msg.includes("SERVICE_UNAVAILABLE") || msg.includes("isTransient") || msg.includes("User interaction is not allowed");
       if (isRetryable && attempt < MAX_RETRIES) {
         logger.wave(`Push token attempt ${attempt} failed (transient), retrying in ${RETRY_DELAY}ms...`);
         await new Promise((r) => setTimeout(r, RETRY_DELAY));
@@ -117,7 +117,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
       if (isRetryable) {
         logger.warn("Push token registration failed (transient, all retries exhausted)", msg);
       } else {
-        logger.error("Failed to get push token", err);
+        logger.warn("Failed to get push token (non-fatal)", err);
       }
       return null;
     }
@@ -141,6 +141,6 @@ export async function unregisterPushToken(): Promise<void> {
 
     logger.wave("Push token unregistered");
   } catch (err) {
-    logger.error("Failed to unregister push token", err);
+    logger.warn("Failed to unregister push token (non-fatal)", err);
   }
 }

@@ -117,7 +117,7 @@ class WaveBleManager {
         useBleStore.getState().setAdvertising(true);
       }
     } catch (error) {
-      logger.error("Failed to start advertising", error);
+      logger.warn("Failed to start advertising (scanning continues)", error);
       useBleStore.getState().setError("Failed to start advertising");
     }
 
@@ -164,7 +164,7 @@ class WaveBleManager {
       await updateAdvertisedToken(this.buildPayload(newToken));
       logger.ble("Token rotated");
     } catch (error) {
-      logger.error("Token rotation failed", error);
+      logger.warn("Token rotation failed (next rotation retries)", error);
     }
   }
 
@@ -274,7 +274,7 @@ class WaveBleManager {
         await startAdvertising(this.buildPayload(token));
         useBleStore.getState().setAdvertising(true);
       } catch (err) {
-        logger.error("Failed to restart advertising after resume", err);
+        logger.warn("Failed to restart advertising after resume (scanning continues)", err);
       }
     }
 

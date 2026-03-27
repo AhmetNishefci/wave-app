@@ -287,7 +287,7 @@ export const useMatchStore = create<MatchState>()(
           logger.wave(`Hydrated ${map.size} matches from storage`);
         } else if (persisted) {
           // Persisted data exists but is in unexpected format — log for debugging
-          logger.error("matchStore hydration: unexpected persisted format", {
+          logger.warn("matchStore hydration: unexpected persisted format", {
             type: typeof persisted,
             keys: persisted ? Object.keys(persisted) : [],
           });

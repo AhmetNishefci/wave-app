@@ -196,7 +196,7 @@ serve(async (req: Request) => {
             .or("is_active.eq.true,expires_at.gt.now()");
           waverTokens = (waverRows ?? []).map((r: { token: string }) => r.token);
         } catch (err) {
-          console.error("Failed to look up waver tokens for undo:", err);
+          console.warn("Failed to look up waver tokens for undo (non-fatal):", err);
         }
 
         try {
@@ -211,7 +211,7 @@ serve(async (req: Request) => {
           });
           adminClient.removeChannel(ch);
         } catch (err) {
-          console.error("wave_undo broadcast failed:", err);
+          console.warn("wave_undo broadcast failed (non-fatal):", err);
         }
       }
 
@@ -278,7 +278,7 @@ serve(async (req: Request) => {
           waverToken = waverRow?.token ?? null;
           waverNote = waverRow?.note ?? null;
         } catch (err) {
-          console.error("Failed to look up waver token:", err);
+          console.warn("Failed to look up waver token (non-fatal):", err);
         }
 
         // Check mutual preferences before notifying — suppress notification if
@@ -315,7 +315,7 @@ serve(async (req: Request) => {
             });
             adminClient.removeChannel(ch);
           } catch (err) {
-            console.error("Wave broadcast to target failed:", err);
+            console.warn("Wave broadcast to target failed (non-fatal):", err);
           }
 
           const targetLocale = targetProfile?.locale ?? null;
@@ -514,7 +514,7 @@ async function sendExpoPush(
       }
     }
   } catch (err) {
-    console.error(`Push notification failed for ${targetUserId}:`, err);
+    console.warn(`Push notification failed for ${targetUserId}:`, err);
   }
 }
 

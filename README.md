@@ -143,8 +143,9 @@ Wave-app/
 │   ├── utils/
 │   │   ├── logger.ts             # Structured logger (ble, wave, auth channels)
 │   │   ├── haptics.ts            # Haptic feedback
-│   │   ├── sound.ts              # Match chime audio
+│   │   ├── sound.ts              # Match chime + wave sent audio
 │   │   ├── deepLink.ts           # Sanitized social platform deep-links
+│   │   ├── waveCleanup.ts        # Shared wave state cleanup on match/remove
 │   │   ├── age.ts                # Age calculation from DOB
 │   │   ├── routeFromProfile.ts   # Profile-based routing (with 15s timeout)
 │   │   ├── seedPeers.ts          # Dev-only simulated peers
@@ -240,9 +241,11 @@ Concurrent GATT connections capped at 4, with queue of max 20.
 
 ### Offline Resilience
 - **Wave queue**: Staggered retry (3s between) when connectivity returns
-- **GATT queue**: 4 concurrent, 20 queued, processed as slots open
-- **Realtime reconnection**: Exponential backoff (3s → 60s), network-aware
-- **Foreground reconciliation**: Token expiry check, stale wave cleanup, server match fetch
+- **GATT queue**: 4 concurrent, 20 queued with RSSI-based eviction for crowded venues
+- **Realtime reconnection**: Exponential backoff (3s → 60s), network-aware, forced reconnect on foreground
+- **Foreground reconciliation**: Token expiry check, stale wave cleanup, server match fetch, Realtime re-subscribe
+- **Defense-in-depth**: `useNoteResolver` poll (30s) self-corrects stale wave/match state from server truth
+- **Edge function timeout**: All calls wrapped with 10s timeout to prevent UI hangs
 
 ### Support System
 - In-app structured ticket form (category + details, stored in DB, rate limited 5/hour)
@@ -251,7 +254,7 @@ Concurrent GATT connections capped at 4, with queue of max 20.
 - Direct email option (`mailto:`) as alternative channel
 
 ### Security
-- Zod input validation on 5 edge functions
+- Zod input validation on all user-facing edge functions
 - Origin-aware CORS (denies unknown browser origins)
 - Sanitized deep-link URLs
 - OTP brute-force protection (5 attempts, 30s lockout)
@@ -317,6 +320,17 @@ supabase db push                            # Apply all migrations
 supabase functions deploy --no-verify-jwt   # Deploy all edge functions
 ```
 
+### Vault Secrets (required for cron jobs)
+
+Cron functions (`cleanup`, `daily-engagement`) call edge functions via `pg_net`. They read the project URL and service role key from Supabase Vault. Run these in the **SQL Editor** after first deploy:
+
+```sql
+SELECT vault.create_secret('<YOUR_SERVICE_ROLE_KEY>', 'service_role_key');
+SELECT vault.create_secret('https://your-project.supabase.co', 'project_url');
+```
+
+Without these, cron jobs fire but edge function calls silently fail with 401.
+
 ---
 
 ## Edge Functions
@@ -339,7 +353,7 @@ supabase functions deploy --no-verify-jwt   # Deploy all edge functions
 
 ## Database Schema
 
-Core tables (16 migrations in `supabase/migrations/`):
+Core tables (21 migrations in `supabase/migrations/`):
 
 - **`profiles`** — User profiles (gender, DOB, handles, preferences, PostGIS location)
 - **`ephemeral_ids`** — Active ephemeral tokens (rotated every 15 min)
@@ -391,6 +405,7 @@ Dark theme via NativeWind/Tailwind:
 - [ ] Prepare App Store assets: screenshots, description, keywords, promotional text
 - [ ] Fill in App Store privacy nutrition labels (data collection declarations)
 - [ ] Add basic analytics (app opens, waves sent, matches created, DAU)
+- [ ] Capture Apple Sign-In name/email on first launch (if App Review requires it)
 
 ### Backlog
 - [ ] **Android BLE Peripheral** — Implement advertising on Android (scanning already works)
@@ -400,6 +415,8 @@ Dark theme via NativeWind/Tailwind:
 - [ ] **Account Linking** — Let users add multiple auth methods to one account
 - [ ] **Admin Dashboard** — Moderation interface for reports and tickets
 - [ ] **Supabase Pro** — Scale beyond free tier limits (200 Realtime connections, 2 concurrent Edge Functions)
+- [ ] **Database Indexes** — Add indexes on `ephemeral_ids(expires_at)`, `waves(is_consumed, expires_at)` for cleanup performance at scale
+- [ ] **Sentry Performance Transactions** — Wave lifecycle p95 latency tracking when traffic justifies it
 
 ---
 
@@ -408,7 +425,7 @@ Dark theme via NativeWind/Tailwind:
 - **iOS only** for BLE peripheral advertising (scanner works on both platforms)
 - **Supabase Free tier** limits: 200 concurrent Realtime connections, 2 concurrent Edge Functions
 - **No automated tests** — All testing is manual
-- **Crash reporting** — Sentry integrated (errors + breadcrumbs + user/device context), source maps upload pending first production build
+- **Crash reporting** — Sentry integrated (36 actionable errors + 197 breadcrumbs with BLE/token context), source maps upload pending first production build
 - **BLE range** — Effective ~30 meters (hardware dependent), best under 10 meters
 - **No account linking** — Apple, Google, and Phone sign-ins create separate accounts
 - **Support emails** sent from `onboarding@resend.dev` until domain verification (may hit spam)

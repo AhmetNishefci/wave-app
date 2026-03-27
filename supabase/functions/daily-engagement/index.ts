@@ -95,11 +95,19 @@ serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
 
   try {
-    // Auth check: only accept service role key (cron sends it via vault)
+    // Auth check: only accept service_role JWT (cron sends it via vault).
+    // Decodes the JWT payload to check the role claim instead of comparing
+    // raw key strings — immune to mismatches between vault and runtime env.
     const authHeader = req.headers.get("Authorization");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const token = authHeader?.replace("Bearer ", "") ?? "";
-    if (!serviceKey || token !== serviceKey) {
+    const jwt = authHeader?.replace("Bearer ", "") ?? "";
+    let role = "";
+    try {
+      const payload = JSON.parse(atob(jwt.split(".")[1]));
+      role = payload.role ?? "";
+    } catch {
+      // malformed JWT
+    }
+    if (role !== "service_role") {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         {

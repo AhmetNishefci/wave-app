@@ -17,11 +17,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  */
 serve(async (req: Request) => {
   try {
-    // Auth check: only accept service role key (not anon key which is public)
+    // Auth check: only accept service_role JWT (cron sends it via vault).
     const authHeader = req.headers.get("Authorization");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const token = authHeader?.replace("Bearer ", "") ?? "";
-    if (!serviceKey || token !== serviceKey) {
+    const jwt = authHeader?.replace("Bearer ", "") ?? "";
+    let role = "";
+    try {
+      const payload = JSON.parse(atob(jwt.split(".")[1]));
+      role = payload.role ?? "";
+    } catch {
+      // malformed JWT
+    }
+    if (role !== "service_role") {
       return new Response(
         JSON.stringify({ status: "error", message: "Unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json" } },
@@ -30,7 +36,7 @@ serve(async (req: Request) => {
 
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      serviceKey,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     const { error } = await adminClient.rpc("cleanup_expired_data");

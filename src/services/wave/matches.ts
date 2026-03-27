@@ -1,6 +1,7 @@
 import { supabase } from "../supabase";
 import { useMatchStore } from "@/stores/matchStore";
 import { logger } from "@/utils/logger";
+import { clearWaveStateForUser } from "@/utils/waveCleanup";
 import type { Match } from "@/types";
 
 const PAGE_SIZE = 50;
@@ -155,6 +156,7 @@ async function mergeServerMatches(
   if (serverMatches.length > 0) {
     for (const match of serverMatches) {
       store.addMatch(match);
+      clearWaveStateForUser(match.matchedUserId);
     }
     logger.wave("Merged server matches into store", {
       count: serverMatches.length,

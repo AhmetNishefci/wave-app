@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useMatchStore } from "@/stores/matchStore";
 import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
+import { clearWaveStateForUser } from "@/utils/waveCleanup";
 
 // Lazy-load expo-notifications — may not be available in Expo Go
 let Notifications: typeof import("expo-notifications") | null = null;
@@ -70,14 +71,18 @@ export function useNotifications() {
           // match screen. We do NOT call router.push here — that would
           // cause a double navigation (both this handler and MainLayout
           // would push /(main)/match, stacking two screens).
+          const matchedUserId = (data.matched_user_id as string) ?? "unknown";
           const store = useMatchStore.getState();
           store.addMatch({
             matchId: data.match_id as string,
-            matchedUserId: (data.matched_user_id as string) ?? "unknown",
+            matchedUserId,
             instagramHandle: (data.instagram_handle as string) ?? undefined,
             createdAt: (data.created_at as string) ?? new Date().toISOString(),
             seen: false,
           });
+          if (matchedUserId !== "unknown") {
+            clearWaveStateForUser(matchedUserId);
+          }
         } else if (
           data?.type === "wave" ||
           data?.type === "proximity_alert" ||

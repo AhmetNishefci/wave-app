@@ -7,6 +7,7 @@ import { useMatchStore } from "@/stores/matchStore";
 import { useBleStore } from "@/stores/bleStore";
 import { removeMatchFromServer, blockUser } from "@/services/wave/waves";
 import { fetchMatchesFromServer, loadMoreMatches } from "@/services/wave/matches";
+import { clearWaveStateForUser } from "@/utils/waveCleanup";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SocialActionRow } from "@/components/SocialActionRow";
@@ -384,6 +385,7 @@ function MatchActionSheet({
     onClose();
     if (result.success) {
       useMatchStore.getState().removeMatch(match.matchId);
+      clearWaveStateForUser(match.matchedUserId);
       useBleStore.getState().removeByUserId(match.matchedUserId);
       useBleStore.getState().addBlockedUserId(match.matchedUserId);
     } else {
@@ -408,6 +410,7 @@ function MatchActionSheet({
     onClose();
     if (result.success) {
       useMatchStore.getState().removeMatch(match.matchId);
+      clearWaveStateForUser(match.matchedUserId);
       useBleStore.getState().removeByUserId(match.matchedUserId);
       useBleStore.getState().addBlockedUserId(match.matchedUserId);
       if (result.reportCreated) {
@@ -449,6 +452,7 @@ function MatchActionSheet({
               onClose();
               if (success) {
                 useMatchStore.getState().removeMatch(match.matchId);
+                clearWaveStateForUser(match.matchedUserId);
               } else {
                 Alert.alert(t("common.error"), t("history.removeError"));
               }

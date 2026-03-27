@@ -1,8 +1,8 @@
 import { supabase } from "../supabase";
 import { useWaveStore } from "@/stores/waveStore";
 import { useMatchStore } from "@/stores/matchStore";
-import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
+import { clearWaveStateForUser } from "@/utils/waveCleanup";
 import NetInfo from "@react-native-community/netinfo";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -58,17 +58,11 @@ function createChannel(userId: string): void {
           seen: false,
         });
 
-        // Clean up the matched user's wave token from incomingWaveTokens (V6 fix).
-        // When a match is created, the "Wave back" badge is stale — remove the
-        // incoming wave token so PeerRow shows "Matched" immediately, not both
-        // "Waved at you" and "Matched" simultaneously.
-        const peers = useBleStore.getState().nearbyPeers;
-        const waveStore = useWaveStore.getState();
-        for (const [token, peer] of peers) {
-          if (peer.userId === data.matched_user_id && waveStore.incomingWaveTokens.includes(token)) {
-            useWaveStore.getState().removeIncomingWaveToken(token);
-          }
-        }
+        // Clean up ALL wave state for the matched user (V6 fix, extended).
+        // When a match is created, both "Wave back" and "Undo" badges are stale —
+        // the relationship has graduated to "Matched". Without this cleanup,
+        // removing the match later would resurface the old wave state.
+        clearWaveStateForUser(data.matched_user_id);
 
         // Fetch the handle via authenticated RPC (not from broadcast payload)
         fetchMatchHandle(data.match_id).catch((err) =>
@@ -98,7 +92,17 @@ function createChannel(userId: string): void {
       logger.wave("Match removed event received", payload);
       const data = payload.payload as { match_id?: string };
       if (data.match_id) {
+        // Look up the matched user BEFORE removing the match from store,
+        // so we can clean up wave state for their tokens.
+        const match = useMatchStore.getState().matchesById.get(data.match_id);
         useMatchStore.getState().removeMatch(data.match_id);
+
+        // Clean up any lingering wave state for the removed user.
+        // Without this, stale pendingWaves or incomingWaveTokens would
+        // resurface as "Undo" or "Wave back" after the match disappears.
+        if (match?.matchedUserId) {
+          clearWaveStateForUser(match.matchedUserId);
+        }
       }
     })
     .subscribe((status, err) => {

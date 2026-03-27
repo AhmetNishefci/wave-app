@@ -37,6 +37,7 @@ import type { NearbyPeer } from "@/types";
 import { logger } from "@/utils/logger";
 import { playWaveSent } from "@/utils/sound";
 import { useNoteResolver } from "@/hooks/useNoteResolver";
+import { clearWaveStateForUser } from "@/utils/waveCleanup";
 import { seedFakePeers, clearFakePeers, seedFakeMatches, triggerFakeMatch, clearFakeMatches } from "@/utils/seedPeers";
 import { getCurrentLocation, updateLocationOnServer } from "@/services/location";
 import { showPermissionBlockedAlert } from "@/services/ble/permissions";
@@ -396,6 +397,11 @@ export default function RadarScreen() {
         instagram: result.match?.instagramHandle,
         snapchat: result.match?.snapchatHandle,
       });
+      // Clean ALL wave state for the matched peer — this user completed the
+      // match via HTTP response (not broadcast), so the cleanup in
+      // realtime.ts doesn't fire here. Without this, removing the match
+      // later would resurface "Wave back" or "Undo" from stale wave tokens.
+      if (peer.userId) clearWaveStateForUser(peer.userId);
       notifySuccess();
       logger.wave("Match from wave!");
     } else if (result.status === "pending") {

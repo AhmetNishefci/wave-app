@@ -141,13 +141,29 @@ serve(async (req: Request) => {
         .limit(1)
         .maybeSingle();
 
+      // Build the list of tokens to match against. The client may send
+      // a token that differs from the one stored in the wave record —
+      // this happens when the target user's token rotated after the wave
+      // was sent (e.g., target killed & reopened the app). We resolve
+      // the token to a user_id and match against ALL their tokens.
+      const targetTokens = new Set<string>([target_ephemeral_token]);
+      if (tokenRow?.user_id) {
+        const { data: allTokens } = await adminClient
+          .from("ephemeral_ids")
+          .select("token")
+          .eq("user_id", tokenRow.user_id);
+        for (const t of allTokens ?? []) {
+          targetTokens.add(t.token);
+        }
+      }
+
       // Delete the wave record (only if it hasn't been consumed/matched
       // and was created within the wave lifetime — 15 minutes)
       const { data: deleted, error: delError } = await adminClient
         .from("waves")
         .delete()
         .eq("waver_user_id", user.id)
-        .eq("target_ephemeral_token", target_ephemeral_token)
+        .in("target_ephemeral_token", Array.from(targetTokens))
         .eq("is_consumed", false)
         .gte("created_at", new Date(Date.now() - 15 * 60_000).toISOString())
         .select();
@@ -167,21 +183,20 @@ serve(async (req: Request) => {
         });
       }
 
-      // Broadcast wave_undo to the target user so they remove the waver token
+      // Broadcast wave_undo to the target user so they remove the waver token.
+      // Send ALL waver tokens (not just active) because the target's
+      // incomingWaveTokens may reference the waver's old token if it rotated.
       if (tokenRow?.user_id) {
-        // Look up the waver's active ephemeral token
-        let waverToken: string | null = null;
+        let waverTokens: string[] = [];
         try {
-          const { data: waverRow } = await adminClient
+          const { data: waverRows } = await adminClient
             .from("ephemeral_ids")
             .select("token")
             .eq("user_id", user.id)
-            .eq("is_active", true)
-            .limit(1)
-            .maybeSingle();
-          waverToken = waverRow?.token ?? null;
+            .or("is_active.eq.true,expires_at.gt.now()");
+          waverTokens = (waverRows ?? []).map((r: { token: string }) => r.token);
         } catch (err) {
-          console.error("Failed to look up waver token for undo:", err);
+          console.error("Failed to look up waver tokens for undo:", err);
         }
 
         try {
@@ -189,7 +204,10 @@ serve(async (req: Request) => {
           await ch.send({
             type: "broadcast",
             event: "wave_undo",
-            payload: { waver_token: waverToken },
+            payload: {
+              waver_token: waverTokens[0] ?? null,
+              waver_tokens: waverTokens,
+            },
           });
           adminClient.removeChannel(ch);
         } catch (err) {

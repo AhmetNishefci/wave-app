@@ -90,6 +90,8 @@ class WaveBleManager {
    * Requires permissions to be granted and a token to advertise.
    */
   async start(): Promise<void> {
+    if (this.isRunning) return; // TD-2: prevent double-start (timer leak)
+
     if (!this.bleManager) {
       throw new Error("BLE Manager not initialized. Call initialize() first.");
     }
@@ -220,6 +222,8 @@ class WaveBleManager {
   }
 
   private startPruning(): void {
+    // Clear any existing timer to prevent leaks if called twice (TD-2 fix)
+    this.stopPruning();
     this.pruneTimer = setInterval(() => {
       useBleStore.getState().pruneStale();
       pruneGattReadCache();

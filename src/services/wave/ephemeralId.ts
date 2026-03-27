@@ -1,4 +1,4 @@
-import { supabase } from "../supabase";
+import { invokeWithTimeout } from "../supabase";
 import { getFreshSession } from "./session";
 import { logger } from "@/utils/logger";
 import type { Gender } from "@/types";
@@ -53,9 +53,7 @@ async function attemptFetchToken(): Promise<TokenResponse | null> {
     return null;
   }
 
-  const { data, error } = await supabase.functions.invoke(
-    "assign-ephemeral-id",
-  );
+  const { data, error } = await invokeWithTimeout("assign-ephemeral-id");
 
   if (error) {
     let details = "";

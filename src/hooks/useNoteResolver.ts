@@ -316,6 +316,20 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
     }
   }
 
+  // Defense-in-depth: remove stale incoming wave tokens.
+  // If the server says has_waved_at_me=false for a token we have in
+  // incomingWaveTokens, the wave was undone or expired — clean it up.
+  // This self-corrects if the wave_undo broadcast was missed (e.g., the
+  // waver's token rotated and the broadcast token didn't match).
+  {
+    const waveState = useWaveStore.getState();
+    for (const existingToken of waveState.incomingWaveTokens) {
+      if (batchedTokens.includes(existingToken) && !incomingWaveTokens.has(existingToken)) {
+        useWaveStore.getState().removeIncomingWaveToken(existingToken);
+      }
+    }
+  }
+
   // Bridge: sync outgoing wave tokens from server.
   // After app restart, pendingWaves is empty (in-memory only).
   // The server knows which peers we have pending waves to — rebuild
@@ -325,6 +339,18 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
     for (const token of outgoingWaveTokens) {
       if (!waveState.pendingWaves.has(token)) {
         useWaveStore.getState().addPendingWave(token);
+      }
+    }
+  }
+
+  // Defense-in-depth: remove stale outgoing wave tokens.
+  // If the server says i_waved_at_them=false for a token in pendingWaves,
+  // the wave expired or was already undone server-side — clean it up.
+  {
+    const waveState = useWaveStore.getState();
+    for (const existingToken of waveState.pendingWaves.keys()) {
+      if (batchedTokens.includes(existingToken) && !outgoingWaveTokens.has(existingToken)) {
+        useWaveStore.getState().removePendingWave(existingToken);
       }
     }
   }

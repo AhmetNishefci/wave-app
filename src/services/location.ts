@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { supabase } from "./supabase";
+import { invokeWithTimeout } from "./supabase";
 import { logger } from "@/utils/logger";
 
 /** Timestamp (ms) when the rate limit window expires. Prevents wasteful calls. */
@@ -103,7 +103,7 @@ export async function updateLocationOnServer(
       return null;
     }
 
-    const { data, error } = await supabase.functions.invoke(
+    const { data, error } = await invokeWithTimeout(
       "update-location",
       { body: { latitude, longitude } },
     );

@@ -1,6 +1,7 @@
 import { supabase } from "../supabase";
 import { useWaveStore } from "@/stores/waveStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
 import NetInfo from "@react-native-community/netinfo";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -57,6 +58,18 @@ function createChannel(userId: string): void {
           seen: false,
         });
 
+        // Clean up the matched user's wave token from incomingWaveTokens (V6 fix).
+        // When a match is created, the "Wave back" badge is stale — remove the
+        // incoming wave token so PeerRow shows "Matched" immediately, not both
+        // "Waved at you" and "Matched" simultaneously.
+        const peers = useBleStore.getState().nearbyPeers;
+        const waveStore = useWaveStore.getState();
+        for (const [token, peer] of peers) {
+          if (peer.userId === data.matched_user_id && waveStore.incomingWaveTokens.includes(token)) {
+            useWaveStore.getState().removeIncomingWaveToken(token);
+          }
+        }
+
         // Fetch the handle via authenticated RPC (not from broadcast payload)
         fetchMatchHandle(data.match_id).catch((err) =>
           logger.error("Failed to fetch match handle after realtime event", err),
@@ -72,9 +85,13 @@ function createChannel(userId: string): void {
     })
     .on("broadcast", { event: "wave_undo" }, (payload) => {
       logger.wave("Wave undo event received", payload);
-      const data = payload.payload as { waver_token?: string };
-      if (data.waver_token) {
-        useWaveStore.getState().removeIncomingWaveToken(data.waver_token);
+      const data = payload.payload as { waver_token?: string; waver_tokens?: string[] };
+      // Handle both array (new) and single token (backward compat).
+      // The waver may have rotated tokens since sending the original wave,
+      // so the server sends all recent tokens to ensure we find the right one.
+      const tokens = data.waver_tokens ?? (data.waver_token ? [data.waver_token] : []);
+      for (const t of tokens) {
+        useWaveStore.getState().removeIncomingWaveToken(t);
       }
     })
     .on("broadcast", { event: "match_removed" }, (payload) => {

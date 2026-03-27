@@ -258,13 +258,29 @@ async function attemptGattTokenRead(device: Device): Promise<void> {
 
   // Queue if at concurrent cap (M8 fix + queue improvement)
   if (session.pendingGattReads.size >= MAX_CONCURRENT_GATT) {
-    // Only queue if not already queued and queue isn't full
-    if (
-      session.gattQueue.length < MAX_GATT_QUEUE &&
-      !session.gattQueue.some((d) => d.id === deviceId)
-    ) {
+    if (session.gattQueue.some((d) => d.id === deviceId)) return;
+
+    if (session.gattQueue.length < MAX_GATT_QUEUE) {
       session.gattQueue.push(device);
       logger.ble(`GATT read queued (${session.gattQueue.length}/${MAX_GATT_QUEUE}): ${deviceId.substring(0, 8)}`);
+    } else {
+      // Queue full — evict weakest-signal device if new device is closer (V2 fix).
+      // Mirrors the peer cap eviction pattern in bleStore/flushPendingUpserts.
+      // Ensures closest peers get GATT reads first in crowded venues.
+      const newRssi = device.rssi ?? -100;
+      let weakestIdx = 0;
+      let weakestRssi = session.gattQueue[0]?.rssi ?? -100;
+      for (let i = 1; i < session.gattQueue.length; i++) {
+        const rssi = session.gattQueue[i]?.rssi ?? -100;
+        if (rssi < weakestRssi) {
+          weakestRssi = rssi;
+          weakestIdx = i;
+        }
+      }
+      if (newRssi > weakestRssi) {
+        logger.ble(`GATT queue evict (rssi ${weakestRssi} → ${newRssi}): ${deviceId.substring(0, 8)}`);
+        session.gattQueue[weakestIdx] = device;
+      }
     }
     return;
   }

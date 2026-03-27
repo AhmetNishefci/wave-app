@@ -8,6 +8,8 @@ import { logger } from "@/utils/logger";
  * If the refresh token is also expired, returns null — the caller should
  * treat this as "unauthenticated" and the app will redirect to login.
  */
+const SESSION_REFRESH_TIMEOUT_MS = 10_000;
+
 export async function getFreshSession(): Promise<Session | null> {
   // Read the current session from the Supabase client's internal state.
   // autoRefreshToken is enabled, so the client keeps the token fresh automatically.
@@ -19,14 +21,24 @@ export async function getFreshSession(): Promise<Session | null> {
     return session;
   }
 
-  // No cached session — try an explicit refresh (e.g. after app was idle for a long time)
+  // No cached session — try an explicit refresh (e.g. after app was idle for a long time).
+  // Timeout guard prevents UI freeze if the auth server is unreachable (TD-1 fix).
   logger.wave("No cached session, attempting refresh");
-  const { data: refreshed, error } = await supabase.auth.refreshSession();
+  try {
+    const refreshPromise = supabase.auth.refreshSession();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("session_refresh_timeout")), SESSION_REFRESH_TIMEOUT_MS),
+    );
+    const { data: refreshed, error } = await Promise.race([refreshPromise, timeoutPromise]);
 
-  if (error || !refreshed.session) {
-    logger.warn("Session refresh failed — user must re-authenticate", error);
+    if (error || !refreshed.session) {
+      logger.warn("Session refresh failed — user must re-authenticate", error);
+      return null;
+    }
+
+    return refreshed.session;
+  } catch (err) {
+    logger.warn("Session refresh timed out or failed", err);
     return null;
   }
-
-  return refreshed.session;
 }

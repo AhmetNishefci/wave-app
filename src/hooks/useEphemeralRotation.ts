@@ -75,16 +75,32 @@ export function useEphemeralRotation() {
 
         if (result) {
           consecutiveFailures = 0;
+
+          // Snapshot old token so we can revert if the BLE advertiser
+          // fails to update — prevents split-brain where tokenStore has
+          // the new token but BLE is still broadcasting the old one (V1 fix).
+          const prev = useTokenStore.getState();
+          const prevToken = prev.currentToken;
+          const prevExpiry = prev.tokenExpiresAt;
+
           applyTokenResult(result);
 
           // Clear stale state AFTER new token is confirmed (C4 fix).
           // Previously these were cleared before fetch, causing state loss
           // on transient failures.
-          useWaveStore.getState().clearAllPendingWaves();
           useWaveStore.getState().resetIncomingWaveTokens();
           useMatchStore.getState().clearMatchedTokens();
 
-          await waveBleManager.rotateToken(result.token);
+          try {
+            await waveBleManager.rotateToken(result.token);
+          } catch (rotateErr) {
+            // Revert tokenStore to match what the advertiser is actually
+            // broadcasting. The next scheduled rotation will retry.
+            logger.error("BLE advertiser rotation failed — reverting tokenStore", rotateErr);
+            if (prevToken && prevExpiry) {
+              useTokenStore.getState().setToken(prevToken, prevExpiry);
+            }
+          }
         } else {
           consecutiveFailures++;
 

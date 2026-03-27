@@ -60,11 +60,30 @@ export default function MatchScreen() {
     playMatchChime();
   }, []);
 
+  // Navigate away if match no longer exists in the store (V3 fix).
+  // The displayMatch ref intentionally freezes the match data for rendering
+  // (prevents crashes if the other user blocks/unmatches mid-celebration).
+  // But we need a SEPARATE check to detect removal and exit the screen,
+  // because the ref never becomes null and the old useEffect never fired.
+  const matchStillExists = useMatchStore((s) =>
+    displayMatch ? s.matchesById.has(displayMatch.matchId) : false,
+  );
+
   useEffect(() => {
     if (!displayMatch) {
       router.replace("/(main)/radar");
     }
   }, [displayMatch, router]);
+
+  useEffect(() => {
+    if (displayMatch && !matchStillExists) {
+      logger.wave("Match removed while on celebration — exiting", {
+        matchId: displayMatch.matchId,
+      });
+      useMatchStore.setState({ latestUnseenMatch: null });
+      router.replace("/(main)/radar");
+    }
+  }, [matchStillExists, displayMatch, router]);
 
   const igHandle = displayMatch?.instagramHandle;
   const scHandle = displayMatch?.snapchatHandle;

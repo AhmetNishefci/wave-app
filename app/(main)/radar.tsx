@@ -326,7 +326,48 @@ export default function RadarScreen() {
 
     const result = await sendWave(peer.ephemeralToken);
 
-    if (result.status === "error") {
+    if (result.status === "expired_token") {
+      // The peer's token rotated since we discovered them. If we know their
+      // userId, find their fresh token in nearbyPeers and retry once (V4 fix).
+      store.removePendingWave(peer.ephemeralToken);
+      if (peer.userId) {
+        const peers = useBleStore.getState().nearbyPeers;
+        let freshToken: string | null = null;
+        for (const [token, p] of peers) {
+          if (p.userId === peer.userId && token !== peer.ephemeralToken) {
+            freshToken = token;
+            break;
+          }
+        }
+        if (freshToken) {
+          logger.wave("Retrying wave with fresh token after expired_token", {
+            old: peer.ephemeralToken.substring(0, 8),
+            fresh: freshToken.substring(0, 8),
+          });
+          store.addPendingWave(freshToken);
+          const retry = await sendWave(freshToken);
+          if (retry.status === "pending") {
+            if (retry.targetUserId) {
+              useMatchStore.getState().setPendingWaveUser(retry.targetUserId, freshToken);
+            }
+            setToast({ message: t("radar.waveSentToast") });
+            return;
+          } else if (retry.status === "match" && retry.match) {
+            store.removePendingWave(freshToken);
+            useMatchStore.getState().addMatch(retry.match);
+            useMatchStore.getState().addMatchedToken(freshToken, {
+              instagram: retry.match.instagramHandle,
+              snapchat: retry.match.snapchatHandle,
+            });
+            notifySuccess();
+            return;
+          }
+          store.removePendingWave(freshToken);
+        }
+      }
+      notifyError();
+      setToast({ message: t("radar.couldntWave"), variant: "error" });
+    } else if (result.status === "error") {
       store.removePendingWave(peer.ephemeralToken);
       notifyError();
       setToast({ message: t("radar.couldntWave"), variant: "error" });

@@ -1,4 +1,4 @@
-import { supabase } from "../supabase";
+import { supabase, invokeWithTimeout } from "../supabase";
 import type { WaveResult, Match } from "@/types";
 import { logger } from "@/utils/logger";
 import { getFreshSession } from "./session";
@@ -99,7 +99,7 @@ export async function sendWave(
       return { status: "error" };
     }
 
-    const { data, error } = await supabase.functions.invoke("send-wave", {
+    const { data, error } = await invokeWithTimeout("send-wave", {
       body: { target_ephemeral_token: targetEphemeralToken },
     });
 
@@ -170,6 +170,10 @@ export async function sendWave(
       return { status: "blocked" };
     }
 
+    if (result.status === "error" && result.reason === "invalid_or_expired_token") {
+      return { status: "expired_token" };
+    }
+
     return { status: "error" };
   } catch (error) {
     logger.error("Wave error", error);
@@ -189,7 +193,7 @@ export async function undoWave(
 
     if (!session) return false;
 
-    const { data, error } = await supabase.functions.invoke("send-wave", {
+    const { data, error } = await invokeWithTimeout("send-wave", {
       body: {
         target_ephemeral_token: targetEphemeralToken,
         action: "undo",
@@ -228,7 +232,7 @@ export async function removeMatchFromServer(matchId: string): Promise<boolean> {
     const session = await getFreshSession();
     if (!session) return false;
 
-    const { error } = await supabase.functions.invoke("remove-match", {
+    const { error } = await invokeWithTimeout("remove-match", {
       body: { match_id: matchId },
     });
 
@@ -266,7 +270,7 @@ export async function blockUser(params: {
     const session = await getFreshSession();
     if (!session) return { success: false };
 
-    const { data, error } = await supabase.functions.invoke("block-user", {
+    const { data, error } = await invokeWithTimeout("block-user", {
       body: {
         blocked_id: params.blockedId,
         display_name: params.displayName,
@@ -284,7 +288,7 @@ export async function blockUser(params: {
     logger.wave("User blocked", { blockedId: params.blockedId });
     return {
       success: true,
-      reportCreated: data?.report_created ?? false,
+      reportCreated: (data as { report_created?: boolean })?.report_created ?? false,
     };
   } catch (error) {
     logger.error("Block user error", error);

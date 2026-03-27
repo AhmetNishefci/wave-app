@@ -103,6 +103,11 @@ export default function SettingsScreen() {
     if (success) {
       setBlockedUsers((prev) => prev.filter((u) => u.blockedId !== unblockTarget.blockedId));
       useBleStore.getState().removeBlockedUserId(unblockTarget.blockedId);
+      // Evict stale peer entries so BLE rediscovery creates fresh ones.
+      // useNoteResolver's subscriber detects new unresolved tokens and
+      // triggers a fast resolution tick (~1s), making the peer reappear
+      // on radar within seconds instead of waiting up to 60s.
+      useBleStore.getState().removeByUserId(unblockTarget.blockedId);
       setUnblockTarget(null);
       showToast(t("settings.unblocked"));
     } else {

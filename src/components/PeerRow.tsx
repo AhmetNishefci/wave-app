@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback } from "react";
-import { View, Text, TouchableOpacity, Pressable } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, ActivityIndicator } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useWaveStore } from "@/stores/waveStore";
@@ -38,6 +38,9 @@ export function PeerRow({
   });
   const hasWavedAtMe = useWaveStore(
     (s) => s.incomingWaveTokens.includes(peer.ephemeralToken),
+  );
+  const isWavingBack = useWaveStore(
+    (s) => s.wavingBackTokens.has(peer.ephemeralToken),
   );
   const avatar = useMemo(
     () => getAvatarForToken(peer.ephemeralToken),
@@ -145,7 +148,7 @@ export function PeerRow({
       ) : (
         <TouchableOpacity
           onPress={() => handleWaveWithAnimation(peer)}
-          disabled={isOffline}
+          disabled={isOffline || isWavingBack}
           className={`rounded-lg px-3 py-1.5 ${
             isOffline
               ? "bg-wave-muted/10 border border-wave-muted/20"
@@ -154,15 +157,19 @@ export function PeerRow({
                 : "bg-wave-wave/20 border border-wave-wave/40"
           }`}
         >
-          <Text
-            className={`font-semibold text-sm ${
-              isOffline
-                ? "text-wave-muted"
-                : hasWavedAtMe ? "text-green-400" : "text-wave-wave"
-            }`}
-          >
-            {hasWavedAtMe ? t("peerRow.waveBack") : t("peerRow.wave")}
-          </Text>
+          {isWavingBack ? (
+            <ActivityIndicator size="small" color="#4ade80" />
+          ) : (
+            <Text
+              className={`font-semibold text-sm ${
+                isOffline
+                  ? "text-wave-muted"
+                  : hasWavedAtMe ? "text-green-400" : "text-wave-wave"
+              }`}
+            >
+              {hasWavedAtMe ? t("peerRow.waveBack") : t("peerRow.wave")}
+            </Text>
+          )}
         </TouchableOpacity>
       )}
     </Animated.View>

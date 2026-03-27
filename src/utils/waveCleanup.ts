@@ -21,6 +21,9 @@ export function clearWaveStateForUser(userId: string): void {
       if (waveState.incomingWaveTokens.includes(token)) {
         useWaveStore.getState().removeIncomingWaveToken(token);
       }
+      if (waveState.wavingBackTokens.has(token)) {
+        useWaveStore.getState().removeWavingBack(token);
+      }
     }
   }
 }

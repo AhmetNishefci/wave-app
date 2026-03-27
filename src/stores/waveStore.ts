@@ -10,7 +10,9 @@ const MAX_INCOMING_WAVE_TOKENS = 100;
 
 interface WaveState {
   pendingWaves: Map<string, WavePending>;
-  isWaving: boolean;
+
+  /** Tokens currently in-flight for wave-back (loading spinner, per-peer) */
+  wavingBackTokens: Set<string>;
 
   /** Ephemeral tokens of people who waved at us (anonymous, for "Wave Back" UI) */
   incomingWaveTokens: string[];
@@ -19,7 +21,8 @@ interface WaveState {
   removePendingWave: (targetToken: string) => void;
   clearAllPendingWaves: () => void;
   hasPendingWaveTo: (targetToken: string) => boolean;
-  setWaving: (waving: boolean) => void;
+  addWavingBack: (token: string) => void;
+  removeWavingBack: (token: string) => void;
 
   addIncomingWaveToken: (token: string) => void;
   removeIncomingWaveToken: (token: string) => void;
@@ -30,7 +33,7 @@ interface WaveState {
 
 export const useWaveStore = create<WaveState>((set, get) => ({
   pendingWaves: new Map(),
-  isWaving: false,
+  wavingBackTokens: new Set(),
 
   incomingWaveTokens: [],
 
@@ -52,7 +55,19 @@ export const useWaveStore = create<WaveState>((set, get) => ({
 
   hasPendingWaveTo: (targetToken) => get().pendingWaves.has(targetToken),
 
-  setWaving: (isWaving) => set({ isWaving }),
+  addWavingBack: (token) =>
+    set((state) => {
+      const next = new Set(state.wavingBackTokens);
+      next.add(token);
+      return { wavingBackTokens: next };
+    }),
+
+  removeWavingBack: (token) =>
+    set((state) => {
+      const next = new Set(state.wavingBackTokens);
+      next.delete(token);
+      return { wavingBackTokens: next };
+    }),
 
   addIncomingWaveToken: (token) =>
     set((state) => {
@@ -75,7 +90,7 @@ export const useWaveStore = create<WaveState>((set, get) => ({
   reset: () =>
     set({
       pendingWaves: new Map(),
-      isWaving: false,
+      wavingBackTokens: new Set(),
       incomingWaveTokens: [],
     }),
 }));

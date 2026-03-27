@@ -317,20 +317,32 @@ export default function RadarScreen() {
     const store = useWaveStore.getState();
     if (store.hasPendingWaveTo(peer.ephemeralToken)) return;
 
+    // Detect wave-back: the user is responding to someone who waved at them.
+    // In this case we skip the optimistic "Undo" state — the intent is to
+    // match, not to start a pending wave. Show a loading state instead.
+    const isWaveBack = store.incomingWaveTokens.includes(peer.ephemeralToken);
+
     impactMedium();
     playWaveSent();
-    store.addPendingWave(peer.ephemeralToken);
+
+    if (isWaveBack) {
+      store.addWavingBack(peer.ephemeralToken);
+    } else {
+      store.addPendingWave(peer.ephemeralToken);
+    }
 
     logger.wave("Sending wave to peer", {
       token: peer.ephemeralToken.substring(0, 8),
+      isWaveBack,
     });
 
     const result = await sendWave(peer.ephemeralToken);
+    if (isWaveBack) store.removeWavingBack(peer.ephemeralToken);
 
     if (result.status === "expired_token") {
       // The peer's token rotated since we discovered them. If we know their
       // userId, find their fresh token in nearbyPeers and retry once (V4 fix).
-      store.removePendingWave(peer.ephemeralToken);
+      if (!isWaveBack) store.removePendingWave(peer.ephemeralToken);
       if (peer.userId) {
         const peers = useBleStore.getState().nearbyPeers;
         let freshToken: string | null = null;
@@ -345,16 +357,18 @@ export default function RadarScreen() {
             old: peer.ephemeralToken.substring(0, 8),
             fresh: freshToken.substring(0, 8),
           });
-          store.addPendingWave(freshToken);
+          if (!isWaveBack) store.addPendingWave(freshToken);
           const retry = await sendWave(freshToken);
           if (retry.status === "pending") {
-            if (retry.targetUserId) {
-              useMatchStore.getState().setPendingWaveUser(retry.targetUserId, freshToken);
+            if (!isWaveBack) {
+              if (retry.targetUserId) {
+                useMatchStore.getState().setPendingWaveUser(retry.targetUserId, freshToken);
+              }
             }
             setToast({ message: t("radar.waveSentToast") });
             return;
           } else if (retry.status === "match" && retry.match) {
-            store.removePendingWave(freshToken);
+            if (!isWaveBack) store.removePendingWave(freshToken);
             useMatchStore.getState().addMatch(retry.match);
             useMatchStore.getState().addMatchedToken(freshToken, {
               instagram: retry.match.instagramHandle,
@@ -363,17 +377,17 @@ export default function RadarScreen() {
             notifySuccess();
             return;
           }
-          store.removePendingWave(freshToken);
+          if (!isWaveBack) store.removePendingWave(freshToken);
         }
       }
       notifyError();
       setToast({ message: t("radar.couldntWave"), variant: "error" });
     } else if (result.status === "error") {
-      store.removePendingWave(peer.ephemeralToken);
+      if (!isWaveBack) store.removePendingWave(peer.ephemeralToken);
       notifyError();
       setToast({ message: t("radar.couldntWave"), variant: "error" });
     } else if (result.status === "already_matched") {
-      store.removePendingWave(peer.ephemeralToken);
+      if (!isWaveBack) store.removePendingWave(peer.ephemeralToken);
       if (result.match) useMatchStore.getState().addMatch(result.match);
       useMatchStore.getState().addMatchedToken(peer.ephemeralToken, {
         instagram: result.match?.instagramHandle,
@@ -381,17 +395,17 @@ export default function RadarScreen() {
       });
       setToast({ message: t("radar.alreadyMatchedToast") });
     } else if (result.status === "rate_limited") {
-      store.removePendingWave(peer.ephemeralToken);
+      if (!isWaveBack) store.removePendingWave(peer.ephemeralToken);
       notifyError();
       setToast({ message: t("radar.waveTooFast"), variant: "error" });
     } else if (result.status === "blocked") {
-      store.removePendingWave(peer.ephemeralToken);
+      if (!isWaveBack) store.removePendingWave(peer.ephemeralToken);
       // Remove blocked peer from radar immediately and prevent flicker on BLE rediscovery
       useBleStore.getState().removePeer(peer.ephemeralToken);
       if (peer.userId) useBleStore.getState().addBlockedUserId(peer.userId);
       setToast({ message: t("radar.blockedWave"), variant: "error" });
     } else if (result.status === "match") {
-      store.removePendingWave(peer.ephemeralToken);
+      if (!isWaveBack) store.removePendingWave(peer.ephemeralToken);
       if (result.match) useMatchStore.getState().addMatch(result.match);
       useMatchStore.getState().addMatchedToken(peer.ephemeralToken, {
         instagram: result.match?.instagramHandle,

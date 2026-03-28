@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/stores/authStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { useWaveStore } from "@/stores/waveStore";
 import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
 import { clearWaveStateForUser } from "@/utils/waveCleanup";
@@ -89,6 +90,15 @@ export function useNotifications() {
             }
             logger.wave("Match added from foreground push (Realtime fallback)");
           }
+        } else if (data?.type === "wave" && data?.waver_token) {
+          // Fallback for when Realtime broadcast was missed (WebSocket died
+          // silently during extended foreground usage or network change).
+          const waveStore = useWaveStore.getState();
+          const token = data.waver_token as string;
+          if (!waveStore.incomingWaveTokens.includes(token)) {
+            waveStore.addIncomingWaveToken(token);
+            logger.wave("Incoming wave added from foreground push (Realtime fallback)");
+          }
         }
       });
 
@@ -126,8 +136,16 @@ export function useNotifications() {
           if (matchedUserId !== "unknown") {
             clearWaveStateForUser(matchedUserId);
           }
+        } else if (data?.type === "wave") {
+          // Add waver_token so "Wave back" badge appears on radar
+          if (data.waver_token) {
+            const token = data.waver_token as string;
+            if (!useWaveStore.getState().incomingWaveTokens.includes(token)) {
+              useWaveStore.getState().addIncomingWaveToken(token);
+            }
+          }
+          router.push("/(main)/radar");
         } else if (
-          data?.type === "wave" ||
           data?.type === "proximity_alert" ||
           data?.type === "engagement"
         ) {

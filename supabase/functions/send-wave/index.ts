@@ -328,7 +328,7 @@ serve(async (req: Request) => {
           await sendExpoPush(adminClient, targetUserId, {
             title: getPushString(targetLocale, "waveTitle"),
             body: pushBody,
-            data: { type: "wave" },
+            data: { type: "wave", waver_token: waverToken },
           });
         }
       }

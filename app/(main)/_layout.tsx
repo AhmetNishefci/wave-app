@@ -20,23 +20,35 @@ import { COLORS } from "@/constants/colors";
 export default function MainLayout() {
   const { t } = useTranslation();
   const router = useRouter();
-  const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
-  const adapterState = useBleStore((s) => s.adapterState);
-  const isDiscoveryActive = useBleStore((s) => s.isDiscoveryActive);
-  const hasToken = useTokenStore((s) => !!s.currentToken);
-  const tokenExpiresAt = useTokenStore((s) => s.tokenExpiresAt);
-
-  // Keep Sentry context updated with device state for crash diagnostics
+  // Keep Sentry context updated with device state for crash diagnostics.
+  // Uses store.subscribe to avoid re-rendering the Tabs layout.
   useEffect(() => {
-    Sentry.setContext("ble", { adapterState, isDiscoveryActive });
-  }, [adapterState, isDiscoveryActive]);
-
-  useEffect(() => {
-    Sentry.setContext("token", {
-      hasToken,
-      expiresIn: tokenExpiresAt ? Math.round((tokenExpiresAt - Date.now()) / 1000) : null,
+    const unsubBle = useBleStore.subscribe((state, prev) => {
+      if (state.adapterState !== prev.adapterState || state.isDiscoveryActive !== prev.isDiscoveryActive) {
+        Sentry.setContext("ble", {
+          adapterState: state.adapterState,
+          isDiscoveryActive: state.isDiscoveryActive,
+        });
+      }
     });
-  }, [hasToken, tokenExpiresAt]);
+    const unsubToken = useTokenStore.subscribe((state, prev) => {
+      if (state.currentToken !== prev.currentToken || state.tokenExpiresAt !== prev.tokenExpiresAt) {
+        Sentry.setContext("token", {
+          hasToken: !!state.currentToken,
+          expiresIn: state.tokenExpiresAt ? Math.round((state.tokenExpiresAt - Date.now()) / 1000) : null,
+        });
+      }
+    });
+    // Set initial context
+    const bleState = useBleStore.getState();
+    Sentry.setContext("ble", { adapterState: bleState.adapterState, isDiscoveryActive: bleState.isDiscoveryActive });
+    const tokenState = useTokenStore.getState();
+    Sentry.setContext("token", {
+      hasToken: !!tokenState.currentToken,
+      expiresIn: tokenState.tokenExpiresAt ? Math.round((tokenState.tokenExpiresAt - Date.now()) / 1000) : null,
+    });
+    return () => { unsubBle(); unsubToken(); };
+  }, []);
 
   // Sync app icon badge with unseen match count (reads from store directly
   // to avoid re-rendering the entire Tabs layout on every count change).
@@ -87,14 +99,30 @@ export default function MainLayout() {
   // Push notification registration & tap handling
   useNotifications();
 
-  // Navigate to match screen when a new match arrives (with guard against double push)
+  // Navigate to match screen when a new match arrives. Uses store.subscribe
+  // instead of a reactive selector to prevent re-rendering the Tabs layout —
+  // Expo Router resets the active tab when the parent layout re-renders.
   const navigatedMatchRef = useRef<string | null>(null);
   useEffect(() => {
-    if (latestUnseenMatch && latestUnseenMatch.matchId !== navigatedMatchRef.current) {
-      navigatedMatchRef.current = latestUnseenMatch.matchId;
+    // Check on mount (M3 recovery may have set latestUnseenMatch before this effect)
+    const initial = useMatchStore.getState().latestUnseenMatch;
+    if (initial && initial.matchId !== navigatedMatchRef.current) {
+      navigatedMatchRef.current = initial.matchId;
       router.push("/(main)/match");
     }
-  }, [latestUnseenMatch, router]);
+
+    const unsub = useMatchStore.subscribe((state, prev) => {
+      if (
+        state.latestUnseenMatch &&
+        state.latestUnseenMatch !== prev.latestUnseenMatch &&
+        state.latestUnseenMatch.matchId !== navigatedMatchRef.current
+      ) {
+        navigatedMatchRef.current = state.latestUnseenMatch.matchId;
+        router.push("/(main)/match");
+      }
+    });
+    return unsub;
+  }, [router]);
 
   return (
     <Tabs

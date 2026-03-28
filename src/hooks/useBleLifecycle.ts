@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AppState, AppStateStatus } from "react-native";
+import NetInfo from "@react-native-community/netinfo";
 import { waveBleManager } from "@/services/ble/bleManager";
 import { useBleStore } from "@/stores/bleStore";
 import { useWaveStore } from "@/stores/waveStore";
@@ -114,8 +115,28 @@ export function useBleLifecycle() {
       handleAppStateChange,
     );
 
+    // Reconnect Realtime when network connectivity changes (e.g., WiFi → cellular
+    // on a walk to a coffee bar). The WebSocket can die silently when the
+    // underlying transport changes — no CLOSED/ERROR event fires. This listener
+    // forces a fresh subscription whenever the device regains connectivity.
+    let wasConnected = true;
+    const netUnsubscribe = NetInfo.addEventListener((state) => {
+      const isConnected = !!state.isConnected;
+      if (isConnected && !wasConnected) {
+        // Network restored — force Realtime reconnection
+        const userId = useAuthStore.getState().userId;
+        if (userId) {
+          unsubscribeFromMatches();
+          subscribeToMatches(userId);
+          logger.wave("Realtime re-subscribed on network restore");
+        }
+      }
+      wasConnected = isConnected;
+    });
+
     return () => {
       subscription.remove();
+      netUnsubscribe();
     };
   }, []); // Empty deps — reads from store inside callback
 }

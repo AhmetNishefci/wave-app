@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator } from "rea
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -60,22 +61,27 @@ export default function MatchScreen() {
     playMatchChime();
   }, []);
 
+  // Expo Router mounts ALL tab screens simultaneously — this component is
+  // always alive even when the user is on radar or history. Only run
+  // navigation effects when this screen is actually focused.
+  const isFocused = useIsFocused();
+
   // Navigate away if match no longer exists in the store (V3 fix).
-  // The displayMatch ref intentionally freezes the match data for rendering
-  // (prevents crashes if the other user blocks/unmatches mid-celebration).
-  // But we need a SEPARATE check to detect removal and exit the screen,
-  // because the ref never becomes null and the old useEffect never fired.
+  // Only when this screen is focused — otherwise the navigation fires
+  // from the background and resets the user's active tab.
   const matchStillExists = useMatchStore((s) =>
     displayMatch ? s.matchesById.has(displayMatch.matchId) : false,
   );
 
   useEffect(() => {
+    if (!isFocused) return;
     if (!displayMatch) {
       router.replace("/(main)/radar");
     }
-  }, [displayMatch, router]);
+  }, [displayMatch, router, isFocused]);
 
   useEffect(() => {
+    if (!isFocused) return;
     if (displayMatch && !matchStillExists) {
       logger.wave("Match removed while on celebration — exiting", {
         matchId: displayMatch.matchId,
@@ -83,7 +89,7 @@ export default function MatchScreen() {
       useMatchStore.setState({ latestUnseenMatch: null });
       router.replace("/(main)/radar");
     }
-  }, [matchStillExists, displayMatch, router]);
+  }, [matchStillExists, displayMatch, router, isFocused]);
 
   const igHandle = displayMatch?.instagramHandle;
   const scHandle = displayMatch?.snapchatHandle;
@@ -184,10 +190,10 @@ export default function MatchScreen() {
 
   const handleDismiss = () => {
     if (displayMatch) {
+      // Clear latestUnseenMatch so the layout doesn't re-push celebration.
+      // Do NOT call markMatchSeen — the badge on the Matches tab should
+      // persist until the user actually visits the history tab.
       useMatchStore.setState({ latestUnseenMatch: null });
-      // Mark as seen so the M3 recovery logic doesn't re-trigger the
-      // celebration on next app open. The user already saw the match.
-      useMatchStore.getState().markMatchSeen(displayMatch.matchId);
     }
     router.replace("/(main)/radar");
   };

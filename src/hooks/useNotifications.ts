@@ -137,13 +137,12 @@ export function useNotifications() {
             clearWaveStateForUser(matchedUserId);
           }
         } else if (data?.type === "wave") {
-          // Add waver_token so "Wave back" badge appears on radar
-          if (data.waver_token) {
-            const token = data.waver_token as string;
-            if (!useWaveStore.getState().incomingWaveTokens.includes(token)) {
-              useWaveStore.getState().addIncomingWaveToken(token);
-            }
-          }
+          // Navigate to radar — do NOT add waver_token here. The token will
+          // be added by useNoteResolver's first tick (~1-3s) after checking
+          // has_waved_at_me from the server. Adding it eagerly here causes a
+          // race condition: if A undoes before B's Realtime connects, the
+          // wave_undo broadcast fires before the token is added (no-op), then
+          // the tap handler adds it afterwards — creating a stale "Wave back".
           router.push("/(main)/radar");
         } else if (
           data?.type === "proximity_alert" ||

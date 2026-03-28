@@ -75,9 +75,17 @@ export default function MainLayout() {
 
     // Recover unseen matches from persisted storage (M3 fix).
     // If the app crashed or was killed before the user saw the match
-    // celebration, re-trigger it on next launch.
+    // celebration, re-trigger it on next launch — but only for recent
+    // matches (< 5 min). Older unseen matches were already celebrated
+    // in a previous session; the user dismissed the celebration and the
+    // badge persists on the Matches tab until they visit history.
+    const M3_RECENCY_MS = 5 * 60_000;
     const matches = useMatchStore.getState().getMatchesArray();
-    const unseenMatch = matches.find((m) => !m.seen);
+    const unseenMatch = matches.find((m) => {
+      if (m.seen) return false;
+      const ageMs = Date.now() - new Date(m.createdAt).getTime();
+      return ageMs < M3_RECENCY_MS;
+    });
     if (unseenMatch && !useMatchStore.getState().latestUnseenMatch) {
       useMatchStore.setState({ latestUnseenMatch: unseenMatch });
     }

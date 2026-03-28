@@ -197,6 +197,10 @@ export default function SettingsScreen() {
       const updated = await getLinkedIdentities();
       setLinkedIdentities(updated);
       showToast(t("settings.identityLinked"));
+    } else if (result.error === "expired") {
+      showToast(t("auth.codeExpired"), "error");
+    } else if (result.error === "invalid_code") {
+      showToast(t("auth.invalidCode"), "error");
     } else {
       showToast(t("settings.linkFailed"), "error");
     }

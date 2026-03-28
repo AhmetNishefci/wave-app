@@ -276,6 +276,13 @@ export async function verifyPhoneLinkOtp(
 
     if (error) {
       logger.warn("Phone link OTP verify failed", error.message);
+      const msg = error.message ?? "";
+      if (msg.includes("expired")) {
+        return { success: false, error: "expired" };
+      }
+      if (msg.includes("invalid") || msg.includes("Invalid")) {
+        return { success: false, error: "invalid_code" };
+      }
       return { success: false, error: "unknown" };
     }
 

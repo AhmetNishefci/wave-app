@@ -29,6 +29,22 @@ export function useNoteResolver(isDiscoveryActive: boolean): void {
     }
   }, [isDiscoveryActive]);
 
+  // Force a full re-resolution when resolveGeneration bumps (e.g., on foreground
+  // after backgrounding). Clears the resolved cache so the next tick re-queries
+  // ALL peers — catching any wave state changes that happened while backgrounded
+  // (undo, block, etc.) that were missed because the Realtime socket died.
+  const generationRef = useRef(useBleStore.getState().resolveGeneration);
+  useEffect(() => {
+    const unsub = useBleStore.subscribe((state) => {
+      if (state.resolveGeneration !== generationRef.current) {
+        generationRef.current = state.resolveGeneration;
+        resolvedRef.current.clear();
+        logger.wave("Resolve cache cleared (foreground reconciliation)");
+      }
+    });
+    return unsub;
+  }, []);
+
   // Trigger fast resolution when new unresolved peers appear.
   // This eliminates the duplicate-peer window when a user gets a new token
   // (kill/reopen or rotation) and their BLE address changed.
@@ -213,6 +229,11 @@ function processNotes(batchedTokens: string[], rows: PeerRow[]): void {
       if (row.peer_user_id) {
         useBleStore.getState().addBlockedUserId(row.peer_user_id);
       }
+    } else if (row.peer_user_id && useBleStore.getState().blockedUserIds.has(row.peer_user_id)) {
+      // Server says not blocked anymore — remove from local blockedUserIds.
+      // This catches unblocks that happened while the app was backgrounded
+      // or when the other user unblocked us.
+      useBleStore.getState().removeBlockedUserId(row.peer_user_id);
     }
     if (row.has_waved_at_me) {
       incomingWaveTokens.add(row.token);

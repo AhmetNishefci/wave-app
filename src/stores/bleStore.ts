@@ -16,6 +16,8 @@ interface BleState {
   error: string | null;
   /** Set when the user opens the app from a proximity alert notification */
   proximityAlertPending: boolean;
+  /** Incremented on foreground to force useNoteResolver to re-query all peers */
+  resolveGeneration: number;
 
   setAdapterState: (state: BleAdapterState) => void;
   setScanning: (scanning: boolean) => void;
@@ -24,6 +26,7 @@ interface BleState {
   setPermissionStatus: (status: BlePermissionStatus) => void;
   setError: (error: string | null) => void;
   setProximityAlertPending: (pending: boolean) => void;
+  bumpResolveGeneration: () => void;
   upsertPeer: (peer: NearbyPeer) => void;
   removePeer: (token: string) => void;
   pruneStale: () => void;
@@ -44,6 +47,7 @@ export const useBleStore = create<BleState>((set, get) => ({
   blockedUserIds: new Set(),
   error: null,
   proximityAlertPending: false,
+  resolveGeneration: 0,
 
   setAdapterState: (adapterState) => set({ adapterState }),
   setScanning: (isScanning) => set({ isScanning }),
@@ -52,6 +56,7 @@ export const useBleStore = create<BleState>((set, get) => ({
   setPermissionStatus: (permissionStatus) => set({ permissionStatus }),
   setError: (error) => set({ error }),
   setProximityAlertPending: (proximityAlertPending) => set({ proximityAlertPending }),
+  bumpResolveGeneration: () => set((state) => ({ resolveGeneration: state.resolveGeneration + 1 })),
 
   upsertPeer: (peer) =>
     set((state) => {

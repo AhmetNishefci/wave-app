@@ -95,6 +95,11 @@ export function useBleLifecycle() {
             logger.wave("Realtime re-subscribed on foreground");
           }
 
+          // Force useNoteResolver to re-query all peers on the next tick.
+          // This catches wave state changes (undo, block, etc.) that happened
+          // while backgrounded and were missed because the Realtime socket died.
+          useBleStore.getState().bumpResolveGeneration();
+
           // Refresh location so proximity alerts stay fresh while backgrounded
           // Server rate-limits to 30s, so this is safe to call on every foreground.
           if (useAuthStore.getState().nearbyAlertsEnabled) {
@@ -128,6 +133,7 @@ export function useBleLifecycle() {
         if (userId) {
           unsubscribeFromMatches();
           subscribeToMatches(userId);
+          useBleStore.getState().bumpResolveGeneration();
           logger.wave("Realtime re-subscribed on network restore");
         }
       }

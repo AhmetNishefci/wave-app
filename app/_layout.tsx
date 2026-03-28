@@ -20,6 +20,15 @@ Sentry.init({
   enableAutoSessionTracking: true,
   // Max breadcrumbs retained per event (default 100, keep it tight)
   maxBreadcrumbs: 50,
+  // Suppress Supabase FunctionsFetchError from background network failures.
+  // These are handled by invokeWithTimeout (returns error, retry kicks in).
+  // The raw throw from the Supabase client bubbles as an unhandled rejection
+  // before our wrapper catches it — not actionable, just network noise.
+  beforeSend(event) {
+    const exType = event.exception?.values?.[0]?.type;
+    if (exType === "FunctionsFetchError") return null;
+    return event;
+  },
 });
 
 export default function RootLayout() {

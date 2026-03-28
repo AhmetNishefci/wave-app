@@ -142,7 +142,15 @@ export async function signInWithApple(): Promise<{
     if (err?.code === "ERR_REQUEST_CANCELED") {
       return { success: false, error: "cancelled" };
     }
-    logger.error("Apple sign-in error", err);
+    // Apple's "unknown reason" error is transient (iCloud issues, device
+    // restrictions, overheating, network during Apple ID verification).
+    // User sees error toast and can retry — not actionable for engineers.
+    const isTransient = err?.message?.includes("unknown reason") || err?.code === "ERR_APPLE_AUTHENTICATION_UNKNOWN";
+    if (isTransient) {
+      logger.warn("Apple sign-in failed (transient)", err?.message);
+    } else {
+      logger.error("Apple sign-in error", err);
+    }
     return { success: false, error: i18n.t("common.somethingWentWrong") };
   }
 }

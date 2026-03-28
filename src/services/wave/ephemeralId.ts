@@ -67,7 +67,7 @@ async function attemptFetchToken(): Promise<TokenResponse | null> {
       details = (error as any)?.message ?? "";
     }
 
-    logger.error(
+    logger.warn(
       "Failed to fetch ephemeral token: " + (details || "no details"),
       error,
     );

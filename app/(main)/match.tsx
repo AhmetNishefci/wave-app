@@ -183,11 +183,11 @@ export default function MatchScreen() {
   const openSnapchat = () => scHandle && openSnapchatProfile(scHandle);
 
   const handleDismiss = () => {
-    // Clear latestUnseenMatch so MainLayout doesn't re-push the celebration,
-    // but do NOT mark as seen — the badge on the Matches tab should persist
-    // until the user actually taps on the Matches tab.
     if (displayMatch) {
       useMatchStore.setState({ latestUnseenMatch: null });
+      // Mark as seen so the M3 recovery logic doesn't re-trigger the
+      // celebration on next app open. The user already saw the match.
+      useMatchStore.getState().markMatchSeen(displayMatch.matchId);
     }
     router.replace("/(main)/radar");
   };

@@ -33,6 +33,8 @@ interface ScannerSession {
   /** Maps BLE device ID → last known ephemeral token for same-device dedup */
   deviceToToken: Map<string, string>;
   pendingUpserts: NearbyPeer[];
+  /** Old tokens to remove atomically with the next batch flush (dedup) */
+  pendingRemovals: Set<string>;
   upsertTimer: ReturnType<typeof setTimeout> | null;
   bleManager: BleManager | null;
 }
@@ -46,6 +48,7 @@ function createFreshSession(): ScannerSession {
     recentGattReads: new Map(),
     deviceToToken: new Map(),
     pendingUpserts: [],
+    pendingRemovals: new Set(),
     upsertTimer: null,
     bleManager: null,
   };
@@ -112,12 +115,23 @@ function flushPendingUpserts(): void {
     clearTimeout(session.upsertTimer);
     session.upsertTimer = null;
   }
-  if (session.pendingUpserts.length === 0) return;
+  if (session.pendingUpserts.length === 0 && session.pendingRemovals.size === 0) return;
 
   const batch = session.pendingUpserts;
+  const removals = session.pendingRemovals;
   session.pendingUpserts = [];
+  session.pendingRemovals = new Set();
+
   useBleStore.setState((state) => {
     const next = new Map(state.nearbyPeers);
+
+    // Remove old tokens from dedup BEFORE adding new ones — atomic swap.
+    // This prevents the flicker where a peer briefly disappears from radar
+    // when their token rotates (old deleted, new not yet added).
+    for (const oldToken of removals) {
+      next.delete(oldToken);
+    }
+
     for (const p of batch) {
       const existing = next.get(p.ephemeralToken);
       if (existing) {
@@ -204,28 +218,37 @@ function upsertPeerWithToken(device: Device, token: string, gender: Gender | nul
   const now = Date.now();
 
   // Dedup: if this device was previously advertising a different token (e.g., user
-  // killed and reopened the app), remove the old token's peer entry immediately.
+  // killed and reopened the app), schedule the old token for removal in the same
+  // batch flush as the new token insertion. This prevents a visible flicker where
+  // the peer briefly disappears from radar between the delete and the add.
   const previousToken = session.deviceToToken.get(deviceId);
   if (previousToken && previousToken !== token) {
-    useBleStore.getState().removePeer(previousToken);
+    session.pendingRemovals.add(previousToken);
   }
   session.deviceToToken.set(deviceId, token);
 
-  const existing = useBleStore.getState().nearbyPeers.get(token);
+  const peers = useBleStore.getState().nearbyPeers;
+  const existing = peers.get(token);
+  // Carry over resolved data from the old token when a device rotates.
+  // Without this, the new token starts with userId: null and the peer
+  // briefly disappears from radar (filtered by resolution gate) until
+  // useNoteResolver re-resolves it.
+  const previous = previousToken && previousToken !== token ? peers.get(previousToken) : null;
+  const source = existing ?? previous;
 
   const peer: NearbyPeer = {
     deviceBleId: deviceId,
     ephemeralToken: token,
     rssi,
     lastSeen: now,
-    discoveredAt: existing?.discoveredAt ?? now,
-    gender: gender ?? existing?.gender ?? null,
-    age: age ?? existing?.age ?? null,
-    note: existing?.note ?? null,
-    userId: existing?.userId ?? null,
-    genderPreference: existing?.genderPreference ?? null,
-    agePreferenceMin: existing?.agePreferenceMin ?? null,
-    agePreferenceMax: existing?.agePreferenceMax ?? null,
+    discoveredAt: source?.discoveredAt ?? now,
+    gender: gender ?? source?.gender ?? null,
+    age: age ?? source?.age ?? null,
+    note: source?.note ?? null,
+    userId: source?.userId ?? null,
+    genderPreference: source?.genderPreference ?? null,
+    agePreferenceMin: source?.agePreferenceMin ?? null,
+    agePreferenceMax: source?.agePreferenceMax ?? null,
   };
 
   // Batch upserts to avoid creating a new Map on every BLE advertisement.

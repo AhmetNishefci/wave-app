@@ -56,6 +56,49 @@ export function useNotifications() {
     });
   }, [userId]);
 
+  // Handle foreground notification delivery — processes match/wave pushes
+  // silently without waiting for the user to tap. This is the critical
+  // fallback when the Realtime broadcast is missed (WebSocket glitch,
+  // momentary disconnect). Without this, the user only learns about a
+  // match by tapping the notification banner — which iOS doesn't even
+  // show when the app is in foreground.
+  const receivedListener = useRef<{ remove: () => void } | null>(null);
+
+  useEffect(() => {
+    if (!Notifications) return;
+
+    receivedListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data;
+        logger.wave("Foreground notification received", data);
+
+        if (data?.type === "match" && data?.match_id) {
+          const matchedUserId = (data.matched_user_id as string) ?? "unknown";
+          const store = useMatchStore.getState();
+          // Only add if not already in store (Realtime may have delivered it first)
+          if (!store.matchesById.has(data.match_id as string)) {
+            store.addMatch({
+              matchId: data.match_id as string,
+              matchedUserId,
+              instagramHandle: (data.instagram_handle as string) ?? undefined,
+              createdAt: (data.created_at as string) ?? new Date().toISOString(),
+              seen: false,
+            });
+            if (matchedUserId !== "unknown") {
+              clearWaveStateForUser(matchedUserId);
+            }
+            logger.wave("Match added from foreground push (Realtime fallback)");
+          }
+        }
+      });
+
+    return () => {
+      if (receivedListener.current) {
+        receivedListener.current.remove();
+      }
+    };
+  }, []);
+
   // Handle notification tap → navigate to match screen
   useEffect(() => {
     if (!Notifications) return;

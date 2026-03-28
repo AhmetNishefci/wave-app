@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { View, Text } from "react-native";
 import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -20,7 +21,6 @@ export default function MainLayout() {
   const { t } = useTranslation();
   const router = useRouter();
   const latestUnseenMatch = useMatchStore((s) => s.latestUnseenMatch);
-  const unseenCount = useMatchStore((s) => s.unseenCount);
   const adapterState = useBleStore((s) => s.adapterState);
   const isDiscoveryActive = useBleStore((s) => s.isDiscoveryActive);
   const hasToken = useTokenStore((s) => !!s.currentToken);
@@ -38,14 +38,20 @@ export default function MainLayout() {
     });
   }, [hasToken, tokenExpiresAt]);
 
-  // Sync app icon badge with unseen match count
+  // Sync app icon badge with unseen match count (reads from store directly
+  // to avoid re-rendering the entire Tabs layout on every count change).
   useEffect(() => {
-    try {
-      Notifications.setBadgeCountAsync(unseenCount).catch(() => {});
-    } catch {
-      // expo-notifications may not be available
-    }
-  }, [unseenCount]);
+    const unsub = useMatchStore.subscribe((state, prev) => {
+      if (state.unseenCount !== prev.unseenCount) {
+        try {
+          Notifications.setBadgeCountAsync(state.unseenCount).catch(() => {});
+        } catch {
+          // expo-notifications may not be available
+        }
+      }
+    });
+    return unsub;
+  }, []);
 
   // Initialize BLE manager on mount
   useEffect(() => {
@@ -124,16 +130,8 @@ export default function MainLayout() {
         options={{
           title: t("tabs.matches"),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart-outline" size={size} color={color} />
+            <MatchTabIcon color={color} size={size} />
           ),
-          tabBarBadge: unseenCount > 0 ? unseenCount : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: COLORS.match,
-            fontSize: 10,
-            minWidth: 18,
-            height: 18,
-            lineHeight: 18,
-          },
         }}
       />
       <Tabs.Screen
@@ -152,5 +150,39 @@ export default function MainLayout() {
         }}
       />
     </Tabs>
+  );
+}
+
+/**
+ * Self-contained tab icon for the Matches tab. Reads unseenCount from the
+ * store internally so the parent Tabs component doesn't re-render (and
+ * reset the active tab) when the count changes.
+ */
+function MatchTabIcon({ color, size }: { color: string; size: number }) {
+  const unseenCount = useMatchStore((s) => s.unseenCount);
+  return (
+    <View>
+      <Ionicons name="heart-outline" size={size} color={color} />
+      {unseenCount > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4,
+            right: -10,
+            backgroundColor: COLORS.match,
+            borderRadius: 9,
+            minWidth: 18,
+            height: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 4,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
+            {unseenCount}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }

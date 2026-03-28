@@ -25,11 +25,15 @@ try {
 try {
   Notifications?.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
+      // Suppress banners when app is in foreground. Matches trigger the
+      // celebration screen directly via the foreground received listener
+      // in useNotifications.ts. Waves update the radar UI via Realtime.
+      // Showing a system banner on top of in-app UI is redundant and jarring.
+      shouldShowAlert: false,
+      shouldPlaySound: false,
       shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
+      shouldShowBanner: false,
+      shouldShowList: false,
     }),
   });
 } catch {

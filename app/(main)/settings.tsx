@@ -14,10 +14,14 @@ import {
   getLinkedIdentities,
   linkGoogleIdentity,
   linkAppleIdentity,
+  sendPhoneLinkOtp,
+  verifyPhoneLinkOtp,
   unlinkIdentity,
   type LinkedIdentity,
   type AuthProvider,
 } from "@/services/authLinking";
+import { COUNTRIES, getCountryByCode, type Country } from "@/constants/countries";
+import * as Localization from "expo-localization";
 import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference, syncLocaleToServer } from "@/services/profile";
 import { getBlockedUsers, unblockUser } from "@/services/wave/waves";
 import { getFakeBlockedUsers } from "@/utils/seedPeers";
@@ -81,6 +85,17 @@ export default function SettingsScreen() {
   const [linkingProvider, setLinkingProvider] = useState<AuthProvider | null>(null);
   const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
 
+  // Phone linking bottom sheet state
+  const [showPhoneLink, setShowPhoneLink] = useState(false);
+  const [phoneLinkStep, setPhoneLinkStep] = useState<"phone" | "otp">("phone");
+  const [phoneLinkCountry, setPhoneLinkCountry] = useState<Country>(() => {
+    const region = Localization.getLocales()?.[0]?.regionCode;
+    return region ? getCountryByCode(region) : getCountryByCode("US");
+  });
+  const [phoneLinkNumber, setPhoneLinkNumber] = useState("");
+  const [phoneLinkOtp, setPhoneLinkOtp] = useState("");
+  const [phoneLinkLoading, setPhoneLinkLoading] = useState(false);
+
   useEffect(() => {
     getLinkedIdentities().then(setLinkedIdentities);
   }, []);
@@ -94,9 +109,14 @@ export default function SettingsScreen() {
       result = await linkGoogleIdentity();
     } else if (provider === "apple") {
       result = await linkAppleIdentity();
+    } else if (provider === "phone") {
+      setLinkingProvider(null);
+      setPhoneLinkStep("phone");
+      setPhoneLinkNumber("");
+      setPhoneLinkOtp("");
+      setShowPhoneLink(true);
+      return;
     } else {
-      // Phone linking would need a bottom sheet with OTP flow — skip for now
-      showToast(t("settings.phoneLinkComingSoon"));
       setLinkingProvider(null);
       return;
     }
@@ -149,6 +169,37 @@ export default function SettingsScreen() {
         },
       ],
     );
+  };
+
+  const handlePhoneLinkSendCode = async () => {
+    if (phoneLinkLoading || phoneLinkNumber.length < 6) return;
+    setPhoneLinkLoading(true);
+    const fullPhone = `${phoneLinkCountry.dial}${phoneLinkNumber.replace(/\D/g, "")}`;
+    const result = await sendPhoneLinkOtp(fullPhone);
+    setPhoneLinkLoading(false);
+    if (result.success) {
+      setPhoneLinkStep("otp");
+    } else if (result.error === "rate_limited") {
+      showToast(t("phoneLogin.rateLimited"), "error");
+    } else {
+      showToast(result.error ?? t("settings.linkFailed"), "error");
+    }
+  };
+
+  const handlePhoneLinkVerify = async () => {
+    if (phoneLinkLoading || phoneLinkOtp.length < 6) return;
+    setPhoneLinkLoading(true);
+    const fullPhone = `${phoneLinkCountry.dial}${phoneLinkNumber.replace(/\D/g, "")}`;
+    const result = await verifyPhoneLinkOtp(fullPhone, phoneLinkOtp);
+    setPhoneLinkLoading(false);
+    if (result.success) {
+      setShowPhoneLink(false);
+      const updated = await getLinkedIdentities();
+      setLinkedIdentities(updated);
+      showToast(t("settings.identityLinked"));
+    } else {
+      showToast(t("settings.linkFailed"), "error");
+    }
   };
 
   const langCode = i18n.language?.substring(0, 2) ?? "en";
@@ -485,6 +536,84 @@ export default function SettingsScreen() {
 
   return (
     <>
+      {/* Phone linking bottom sheet */}
+      <BottomSheet visible={showPhoneLink} onClose={() => setShowPhoneLink(false)}>
+        <View className="items-center mb-4">
+          <Ionicons name="call-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
+          <Text className="text-white text-lg font-semibold">
+            {phoneLinkStep === "phone" ? t("settings.linkPhone") : t("settings.verifyCode")}
+          </Text>
+        </View>
+
+        {phoneLinkStep === "phone" ? (
+          <View>
+            <View className="flex-row items-center bg-wave-surface rounded-xl px-4 py-3 mb-4">
+              <TouchableOpacity
+                onPress={() => {
+                  // Simple country selector — cycle through common countries
+                  // Full picker would be too heavy for a bottom sheet
+                }}
+                className="mr-3"
+              >
+                <Text className="text-white text-base">{phoneLinkCountry.flag} {phoneLinkCountry.dial}</Text>
+              </TouchableOpacity>
+              <TextInput
+                value={phoneLinkNumber}
+                onChangeText={setPhoneLinkNumber}
+                placeholder={t("phoneLogin.phoneNumber")}
+                placeholderTextColor={COLORS.muted}
+                keyboardType="phone-pad"
+                className="flex-1 text-white text-base"
+                autoFocus
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handlePhoneLinkSendCode}
+              disabled={phoneLinkLoading || phoneLinkNumber.length < 6}
+              className={`w-full rounded-xl py-3.5 items-center ${
+                phoneLinkNumber.length >= 6 ? "bg-wave-primary" : "bg-wave-surface"
+              }`}
+            >
+              {phoneLinkLoading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text className={`font-semibold ${phoneLinkNumber.length >= 6 ? "text-white" : "text-wave-muted"}`}>
+                  {t("phoneLogin.sendCode")}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <TextInput
+              value={phoneLinkOtp}
+              onChangeText={(text) => setPhoneLinkOtp(text.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              placeholderTextColor={COLORS.muted}
+              keyboardType="number-pad"
+              className="text-white text-2xl text-center tracking-[12px] bg-wave-surface rounded-xl px-4 py-3 mb-4"
+              autoFocus
+              maxLength={6}
+            />
+            <TouchableOpacity
+              onPress={handlePhoneLinkVerify}
+              disabled={phoneLinkLoading || phoneLinkOtp.length < 6}
+              className={`w-full rounded-xl py-3.5 items-center ${
+                phoneLinkOtp.length >= 6 ? "bg-wave-primary" : "bg-wave-surface"
+              }`}
+            >
+              {phoneLinkLoading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text className={`font-semibold ${phoneLinkOtp.length >= 6 ? "text-white" : "text-wave-muted"}`}>
+                  {t("settings.verifyAndLink")}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+      </BottomSheet>
+
       {/* Full-screen blocking overlay while deleting */}
       <Modal visible={deleting} transparent animationType="fade">
         <View className="flex-1 bg-black/80 items-center justify-center">

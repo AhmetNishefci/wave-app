@@ -43,32 +43,109 @@ interface NotificationContent {
   campaign: string;
 }
 
-/** Weekday evening messages — rotated by day of week */
-const WEEKDAY_VARIANTS: NotificationContent[] = [
-  { title: "Evening plans? ✨", body: "Wave users are most active right now", campaign: "weekday_0" },
-  { title: "Who's nearby? 👋", body: "Open Wave and find out", campaign: "weekday_1" },
-  { title: "Your evening check-in", body: "See who's around you on Wave", campaign: "weekday_2" },
-  { title: "Peak hour on Wave 🔥", body: "More people are nearby right now than usual", campaign: "weekday_3" },
-  { title: "Don't miss a connection", body: "Wave users near you are active right now", campaign: "weekday_4" },
-];
+/** Localized engagement messages — keyed by language code */
+const WEEKDAY_VARIANTS: Record<string, NotificationContent[]> = {
+  en: [
+    { title: "Evening plans? ✨", body: "Wave users are most active right now", campaign: "weekday_0" },
+    { title: "Who's nearby? 👋", body: "Open Wave and find out", campaign: "weekday_1" },
+    { title: "Your evening check-in", body: "See who's around you on Wave", campaign: "weekday_2" },
+    { title: "Peak hour on Wave 🔥", body: "More people are nearby right now than usual", campaign: "weekday_3" },
+    { title: "Don't miss a connection", body: "Wave users near you are active right now", campaign: "weekday_4" },
+  ],
+  de: [
+    { title: "Abendpläne? ✨", body: "Wave-Nutzer sind jetzt am aktivsten", campaign: "weekday_0" },
+    { title: "Wer ist in der Nähe? 👋", body: "Öffne Wave und finde es heraus", campaign: "weekday_1" },
+    { title: "Dein Abend-Check-in", body: "Schau wer gerade um dich herum ist", campaign: "weekday_2" },
+    { title: "Stoßzeit auf Wave 🔥", body: "Mehr Leute sind gerade in der Nähe als sonst", campaign: "weekday_3" },
+    { title: "Verpasse keine Verbindung", body: "Wave-Nutzer in deiner Nähe sind gerade aktiv", campaign: "weekday_4" },
+  ],
+  fr: [
+    { title: "Des plans ce soir ? ✨", body: "Les utilisateurs Wave sont les plus actifs en ce moment", campaign: "weekday_0" },
+    { title: "Qui est à proximité ? 👋", body: "Ouvre Wave pour le découvrir", campaign: "weekday_1" },
+    { title: "Ton check-in du soir", body: "Regarde qui est autour de toi sur Wave", campaign: "weekday_2" },
+    { title: "Heure de pointe sur Wave 🔥", body: "Plus de personnes sont à proximité en ce moment", campaign: "weekday_3" },
+    { title: "Ne manque pas une connexion", body: "Des utilisateurs Wave près de toi sont actifs", campaign: "weekday_4" },
+  ],
+  es: [
+    { title: "¿Planes para esta noche? ✨", body: "Los usuarios de Wave están más activos ahora", campaign: "weekday_0" },
+    { title: "¿Quién está cerca? 👋", body: "Abre Wave y descúbrelo", campaign: "weekday_1" },
+    { title: "Tu check-in de la noche", body: "Mira quién está a tu alrededor en Wave", campaign: "weekday_2" },
+    { title: "Hora punta en Wave 🔥", body: "Hay más personas cerca de ti ahora", campaign: "weekday_3" },
+    { title: "No te pierdas una conexión", body: "Usuarios de Wave cerca de ti están activos", campaign: "weekday_4" },
+  ],
+  it: [
+    { title: "Piani per stasera? ✨", body: "Gli utenti Wave sono più attivi in questo momento", campaign: "weekday_0" },
+    { title: "Chi c'è nei dintorni? 👋", body: "Apri Wave e scoprilo", campaign: "weekday_1" },
+    { title: "Il tuo check-in serale", body: "Guarda chi c'è intorno a te su Wave", campaign: "weekday_2" },
+    { title: "Ora di punta su Wave 🔥", body: "Più persone sono vicine a te ora", campaign: "weekday_3" },
+    { title: "Non perdere una connessione", body: "Utenti Wave vicino a te sono attivi ora", campaign: "weekday_4" },
+  ],
+  pt: [
+    { title: "Planos para hoje à noite? ✨", body: "Usuários do Wave estão mais ativos agora", campaign: "weekday_0" },
+    { title: "Quem está por perto? 👋", body: "Abra o Wave e descubra", campaign: "weekday_1" },
+    { title: "Seu check-in da noite", body: "Veja quem está ao seu redor no Wave", campaign: "weekday_2" },
+    { title: "Hora de pico no Wave 🔥", body: "Mais pessoas estão por perto agora", campaign: "weekday_3" },
+    { title: "Não perca uma conexão", body: "Usuários do Wave perto de você estão ativos", campaign: "weekday_4" },
+  ],
+  tr: [
+    { title: "Akşam planların var mı? ✨", body: "Wave kullanıcıları şu an en aktif", campaign: "weekday_0" },
+    { title: "Yakında kim var? 👋", body: "Wave'i aç ve öğren", campaign: "weekday_1" },
+    { title: "Akşam check-in'in", body: "Wave'de etrafında kimlerin olduğunu gör", campaign: "weekday_2" },
+    { title: "Wave'de yoğun saat 🔥", body: "Şu an yakınında normalden fazla insan var", campaign: "weekday_3" },
+    { title: "Bir bağlantıyı kaçırma", body: "Yakınındaki Wave kullanıcıları şu an aktif", campaign: "weekday_4" },
+  ],
+};
 
-/** Weekend messages — rotated by hour */
-const WEEKEND_VARIANTS: NotificationContent[] = [
-  { title: "Out and about? 👋", body: "More people are on Wave during weekends", campaign: "weekend_0" },
-  { title: "Weekend vibes ☀️", body: "See who's nearby — open Wave", campaign: "weekend_1" },
-  { title: "Perfect time to connect 💫", body: "People near you are on Wave right now", campaign: "weekend_2" },
-];
+const WEEKEND_VARIANTS: Record<string, NotificationContent[]> = {
+  en: [
+    { title: "Out and about? 👋", body: "More people are on Wave during weekends", campaign: "weekend_0" },
+    { title: "Weekend vibes ☀️", body: "See who's nearby — open Wave", campaign: "weekend_1" },
+    { title: "Perfect time to connect 💫", body: "People near you are on Wave right now", campaign: "weekend_2" },
+  ],
+  de: [
+    { title: "Unterwegs? 👋", body: "Am Wochenende sind mehr Leute auf Wave", campaign: "weekend_0" },
+    { title: "Wochenend-Vibes ☀️", body: "Schau wer in der Nähe ist — öffne Wave", campaign: "weekend_1" },
+    { title: "Perfekte Zeit zum Verbinden 💫", body: "Leute in deiner Nähe sind gerade auf Wave", campaign: "weekend_2" },
+  ],
+  fr: [
+    { title: "En balade ? 👋", body: "Plus de monde est sur Wave le week-end", campaign: "weekend_0" },
+    { title: "Vibes du week-end ☀️", body: "Regarde qui est à proximité — ouvre Wave", campaign: "weekend_1" },
+    { title: "Le moment idéal pour connecter 💫", body: "Des gens près de toi sont sur Wave maintenant", campaign: "weekend_2" },
+  ],
+  es: [
+    { title: "¿De paseo? 👋", body: "Más personas usan Wave los fines de semana", campaign: "weekend_0" },
+    { title: "Vibras de fin de semana ☀️", body: "Mira quién está cerca — abre Wave", campaign: "weekend_1" },
+    { title: "Momento perfecto para conectar 💫", body: "Personas cerca de ti están en Wave ahora", campaign: "weekend_2" },
+  ],
+  it: [
+    { title: "In giro? 👋", body: "Più persone usano Wave nel weekend", campaign: "weekend_0" },
+    { title: "Vibes del weekend ☀️", body: "Guarda chi c'è vicino — apri Wave", campaign: "weekend_1" },
+    { title: "Il momento perfetto per connettersi 💫", body: "Persone vicino a te sono su Wave ora", campaign: "weekend_2" },
+  ],
+  pt: [
+    { title: "Passeando? 👋", body: "Mais pessoas usam o Wave nos fins de semana", campaign: "weekend_0" },
+    { title: "Vibes de fim de semana ☀️", body: "Veja quem está por perto — abra o Wave", campaign: "weekend_1" },
+    { title: "Momento perfeito para conectar 💫", body: "Pessoas perto de você estão no Wave agora", campaign: "weekend_2" },
+  ],
+  tr: [
+    { title: "Dışarıda mısın? 👋", body: "Hafta sonları Wave'de daha fazla kişi var", campaign: "weekend_0" },
+    { title: "Hafta sonu havası ☀️", body: "Yakında kim var bak — Wave'i aç", campaign: "weekend_1" },
+    { title: "Bağlantı kurmak için harika zaman 💫", body: "Yakınındaki insanlar şu an Wave'de", campaign: "weekend_2" },
+  ],
+};
 
 function pickContent(user: EligibleUser): NotificationContent {
+  const lang = user.locale?.substring(0, 2) ?? "en";
+
   if (user.is_local_weekend) {
-    // Rotate weekend variants by local DOW (0=Sun, 6=Sat) to vary across weekends
-    const weekendIndex = user.local_dow === 0 ? 0 : 1; // Sun vs Sat
-    return WEEKEND_VARIANTS[weekendIndex % WEEKEND_VARIANTS.length];
+    const variants = WEEKEND_VARIANTS[lang] ?? WEEKEND_VARIANTS.en;
+    const weekendIndex = user.local_dow === 0 ? 0 : 1;
+    return variants[weekendIndex % variants.length];
   }
 
-  // Rotate weekday variants by user's local day of week (Mon=1..Fri=5 → index 0..4)
+  const variants = WEEKDAY_VARIANTS[lang] ?? WEEKDAY_VARIANTS.en;
   const dayIndex = user.local_dow >= 1 && user.local_dow <= 5 ? user.local_dow - 1 : 0;
-  return WEEKDAY_VARIANTS[dayIndex];
+  return variants[dayIndex];
 }
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -78,6 +155,7 @@ interface EligibleUser {
   push_token: string;
   is_local_weekend: boolean;
   local_dow: number; // 0=Sun, 1=Mon, ..., 6=Sat
+  locale?: string | null;
 }
 
 /**
@@ -144,6 +222,21 @@ serve(async (req: Request) => {
     }
 
     const users: EligibleUser[] = eligible ?? [];
+
+    // Fetch locale for each eligible user to send localized notifications
+    if (users.length > 0) {
+      const userIds = users.map((u) => u.user_id);
+      const { data: localeRows } = await adminClient
+        .from("profiles")
+        .select("id, locale")
+        .in("id", userIds);
+      if (localeRows) {
+        const localeMap = new Map(localeRows.map((r: any) => [r.id, r.locale]));
+        for (const user of users) {
+          user.locale = localeMap.get(user.user_id) ?? null;
+        }
+      }
+    }
 
     if (users.length === 0) {
       console.log("No eligible users for engagement push this hour");

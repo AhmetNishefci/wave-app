@@ -1,4 +1,4 @@
-import { View, Text, TextInput, SectionList, TouchableOpacity, Share, Alert, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, TextInput, SectionList, TouchableOpacity, Share, ActivityIndicator, RefreshControl } from "react-native";
 import { useMemo, useEffect, useRef, useCallback, useState } from "react";
 import { useIsFocused } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,6 +11,7 @@ import { clearWaveStateForUser } from "@/utils/waveCleanup";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SocialActionRow } from "@/components/SocialActionRow";
+import { Toast } from "@/components/Toast";
 import { COLORS } from "@/constants/colors";
 import { useNearbyMatchIds } from "@/hooks/useNearbyMatchIds";
 import type { Match } from "@/types";
@@ -69,6 +70,10 @@ export default function HistoryScreen() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [toast, setToast] = useState<{ message: string; variant?: "success" | "error" } | null>(null);
+  const showToast = useCallback((msg: string, variant?: "success" | "error") => {
+    setToast({ message: msg, variant });
+  }, []);
 
   const filteredMatches = useMemo(() => {
     if (!search.trim()) return matches;
@@ -243,6 +248,16 @@ export default function HistoryScreen() {
         <MatchActionSheet
           match={selectedMatch}
           onClose={() => setSelectedMatch(null)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={() => setToast(null)}
         />
       )}
     </View>
@@ -350,9 +365,11 @@ function MatchRow({
 function MatchActionSheet({
   match,
   onClose,
+  showToast,
 }: {
   match: Match;
   onClose: () => void;
+  showToast: (msg: string, variant?: "success" | "error") => void;
 }) {
   const { t } = useTranslation();
   const [showReportReasons, setShowReportReasons] = useState(false);
@@ -388,8 +405,9 @@ function MatchActionSheet({
       clearWaveStateForUser(match.matchedUserId);
       useBleStore.getState().removeByUserId(match.matchedUserId);
       useBleStore.getState().addBlockedUserId(match.matchedUserId);
+      showToast(t("history.blocked"));
     } else {
-      Alert.alert(t("common.error"), t("history.blockError"));
+      showToast(t("history.blockError"), "error");
     }
   };
 
@@ -413,11 +431,9 @@ function MatchActionSheet({
       clearWaveStateForUser(match.matchedUserId);
       useBleStore.getState().removeByUserId(match.matchedUserId);
       useBleStore.getState().addBlockedUserId(match.matchedUserId);
-      if (result.reportCreated) {
-        Alert.alert("", t("history.reportConfirm"));
-      }
+      showToast(result.reportCreated ? t("history.reportedAndBlocked") : t("history.blocked"));
     } else {
-      Alert.alert(t("common.error"), t("history.reportError"));
+      showToast(t("history.reportError"), "error");
     }
   };
 
@@ -453,8 +469,9 @@ function MatchActionSheet({
               if (success) {
                 useMatchStore.getState().removeMatch(match.matchId);
                 clearWaveStateForUser(match.matchedUserId);
+                showToast(t("history.matchRemoved"));
               } else {
-                Alert.alert(t("common.error"), t("history.removeError"));
+                showToast(t("history.removeError"), "error");
               }
             }}
             disabled={removing}

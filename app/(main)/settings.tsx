@@ -10,6 +10,14 @@ import { useTokenStore } from "@/stores/tokenStore";
 import { useMatchStore } from "@/stores/matchStore";
 import { useAuthStore } from "@/stores/authStore";
 import { signOut } from "@/services/auth";
+import {
+  getLinkedIdentities,
+  linkGoogleIdentity,
+  linkAppleIdentity,
+  unlinkIdentity,
+  type LinkedIdentity,
+  type AuthProvider,
+} from "@/services/authLinking";
 import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference, syncLocaleToServer } from "@/services/profile";
 import { getBlockedUsers, unblockUser } from "@/services/wave/waves";
 import { getFakeBlockedUsers } from "@/utils/seedPeers";
@@ -68,6 +76,81 @@ export default function SettingsScreen() {
   const [ticketError, setTicketError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<ToastVariant>("success");
+  // Linked accounts state
+  const [linkedIdentities, setLinkedIdentities] = useState<LinkedIdentity[]>([]);
+  const [linkingProvider, setLinkingProvider] = useState<AuthProvider | null>(null);
+  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getLinkedIdentities().then(setLinkedIdentities);
+  }, []);
+
+  const handleLinkProvider = async (provider: AuthProvider) => {
+    if (linkingProvider) return;
+    setLinkingProvider(provider);
+
+    let result;
+    if (provider === "google") {
+      result = await linkGoogleIdentity();
+    } else if (provider === "apple") {
+      result = await linkAppleIdentity();
+    } else {
+      // Phone linking would need a bottom sheet with OTP flow — skip for now
+      showToast(t("settings.phoneLinkComingSoon"));
+      setLinkingProvider(null);
+      return;
+    }
+
+    setLinkingProvider(null);
+
+    if (result.success) {
+      const updated = await getLinkedIdentities();
+      setLinkedIdentities(updated);
+      showToast(t("settings.identityLinked"));
+    } else if (result.error === "cancelled") {
+      // user dismissed — no toast
+    } else if (result.error === "identity_exists") {
+      showToast(t("settings.identityAlreadyUsed"), "error");
+    } else if (result.error === "already_linked") {
+      showToast(t("settings.identityAlreadyLinked"), "error");
+    } else {
+      showToast(t("settings.linkFailed"), "error");
+    }
+  };
+
+  const handleUnlinkIdentity = (identity: LinkedIdentity) => {
+    if (linkedIdentities.length <= 1) {
+      showToast(t("settings.cantUnlinkLast"), "error");
+      return;
+    }
+
+    const providerName = identity.provider === "apple" ? "Apple" : identity.provider === "google" ? "Google" : t("login.phone");
+
+    Alert.alert(
+      t("settings.unlinkTitle"),
+      t("settings.unlinkMessage", { provider: providerName }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("settings.unlink"),
+          style: "destructive",
+          onPress: async () => {
+            setUnlinkingId(identity.id);
+            const result = await unlinkIdentity(identity.id);
+            setUnlinkingId(null);
+            if (result.success) {
+              const updated = await getLinkedIdentities();
+              setLinkedIdentities(updated);
+              showToast(t("settings.identityUnlinked"));
+            } else {
+              showToast(result.error ?? t("settings.unlinkFailed"), "error");
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const langCode = i18n.language?.substring(0, 2) ?? "en";
   const currentLang = LANGUAGES.find((l) => l.code === langCode) ?? LANGUAGES[0];
 
@@ -438,6 +521,72 @@ export default function SettingsScreen() {
             {t("settings.genderLocked")}
           </Text>
         )}
+      </Section>
+
+      {/* Linked Accounts */}
+      <Section title={t("settings.linkedAccounts")}>
+        {(["apple", "google", "phone"] as AuthProvider[]).map((provider) => {
+          const identity = linkedIdentities.find((i) => i.provider === provider);
+          const isLinked = !!identity;
+          const isLinking = linkingProvider === provider;
+          const isUnlinking = unlinkingId === identity?.id;
+          const providerIcon = provider === "apple" ? "logo-apple" : provider === "google" ? "logo-google" : "call-outline";
+          const providerName = provider === "apple" ? "Apple" : provider === "google" ? "Google" : t("login.phone");
+          const detail = identity?.email
+            ? identity.email.includes("privaterelay") ? t("settings.hiddenApple") : identity.email
+            : identity?.phone ?? null;
+
+          return (
+            <View key={provider} className="flex-row items-center justify-between py-2.5">
+              <View className="flex-row items-center flex-1">
+                <Ionicons
+                  name={providerIcon as any}
+                  size={18}
+                  color={isLinked ? COLORS.text : COLORS.muted}
+                  style={{ marginRight: 10, width: 20 }}
+                />
+                <View className="flex-1">
+                  <Text className={`text-sm ${isLinked ? "text-white" : "text-wave-muted"}`}>
+                    {providerName}
+                  </Text>
+                  {detail && (
+                    <Text className="text-wave-muted text-xs" numberOfLines={1}>{detail}</Text>
+                  )}
+                </View>
+              </View>
+              {isLinked ? (
+                linkedIdentities.length > 1 ? (
+                  <TouchableOpacity
+                    onPress={() => handleUnlinkIdentity(identity)}
+                    disabled={isUnlinking}
+                  >
+                    {isUnlinking ? (
+                      <ActivityIndicator size="small" color={COLORS.danger} />
+                    ) : (
+                      <Text className="text-wave-danger text-xs font-semibold">{t("settings.unlink")}</Text>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.accent} />
+                )
+              ) : (
+                <TouchableOpacity
+                  onPress={() => handleLinkProvider(provider)}
+                  disabled={isLinking}
+                >
+                  {isLinking ? (
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                  ) : (
+                    <Text className="text-wave-primary text-xs font-semibold">{t("settings.link")}</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+        <Text className="text-wave-muted text-xs mt-2 leading-4">
+          {t("settings.linkedAccountsHint")}
+        </Text>
       </Section>
 
       {/* Language */}

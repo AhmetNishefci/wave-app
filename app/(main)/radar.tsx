@@ -290,6 +290,25 @@ export default function RadarScreen() {
     }
   }, []);
 
+  // Auto-resume: if Bluetooth is already PoweredOn (permissions granted in
+  // a previous session), skip the PermissionGate and start discovery
+  // automatically. The user should only see the gate on their very first
+  // app open or if they revoked permissions in iOS Settings.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (
+      !autoStarted.current &&
+      !isDiscoveryActive &&
+      !startingRef.current &&
+      adapterState === "PoweredOn" &&
+      permissionStatus !== "granted"
+    ) {
+      autoStarted.current = true;
+      useBleStore.getState().setPermissionStatus("granted");
+      handleStartDiscovery();
+    }
+  }, [adapterState, isDiscoveryActive, permissionStatus, handleStartDiscovery]);
+
   // Auto-start discovery when opened from a proximity alert notification
   const [showProximityHint, setShowProximityHint] = useState(false);
   useEffect(() => {
@@ -471,8 +490,19 @@ export default function RadarScreen() {
   );
 
 
-  // Show permission gate if not granted
-  if (permissionStatus !== "granted" && !isDiscoveryActive) {
+  // Show permission gate only if the user genuinely hasn't granted permissions.
+  // Skip the gate while adapter is initializing ("Unknown"), already on
+  // ("PoweredOn"), or off but previously authorized ("PoweredOff" — show
+  // the BleStatusBar "Bluetooth is off" message instead). Only show the
+  // gate for "Unauthorized" (permissions denied) or "Unsupported".
+  const showGate = permissionStatus !== "granted"
+    && !isDiscoveryActive
+    && adapterState !== "PoweredOn"
+    && adapterState !== "PoweredOff"
+    && adapterState !== "Unknown"
+    && adapterState !== "Resetting";
+
+  if (showGate) {
     return (
       <PermissionGate
         onRequestPermissions={handleStartDiscovery}

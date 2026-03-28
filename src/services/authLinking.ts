@@ -238,7 +238,10 @@ export async function sendPhoneLinkOtp(phone: string): Promise<{
   error?: string;
 }> {
   try {
-    const { error } = await supabase.auth.signInWithOtp({
+    // Use updateUser to add a phone number to the current account.
+    // This sends an OTP to the phone. Verify with type: "phone_change".
+    // Do NOT use signInWithOtp — that creates a new session instead of linking.
+    const { error } = await supabase.auth.updateUser({
       phone,
     });
 

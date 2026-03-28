@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Linking, TextInput, Switch, RefreshControl, Platform } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Linking, TextInput, Switch, RefreshControl, Platform, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
@@ -87,7 +87,7 @@ export default function SettingsScreen() {
 
   // Phone linking bottom sheet state
   const [showPhoneLink, setShowPhoneLink] = useState(false);
-  const [phoneLinkStep, setPhoneLinkStep] = useState<"phone" | "otp">("phone");
+  const [phoneLinkStep, setPhoneLinkStep] = useState<"phone" | "otp" | "country">("phone");
   const [phoneLinkCountry, setPhoneLinkCountry] = useState<Country>(() => {
     const region = Localization.getLocales()?.[0]?.regionCode;
     return region ? getCountryByCode(region) : getCountryByCode("US");
@@ -95,6 +95,7 @@ export default function SettingsScreen() {
   const [phoneLinkNumber, setPhoneLinkNumber] = useState("");
   const [phoneLinkOtp, setPhoneLinkOtp] = useState("");
   const [phoneLinkLoading, setPhoneLinkLoading] = useState(false);
+  const [phoneLinkCountrySearch, setPhoneLinkCountrySearch] = useState("");
 
   useEffect(() => {
     getLinkedIdentities().then(setLinkedIdentities);
@@ -541,80 +542,130 @@ export default function SettingsScreen() {
   return (
     <>
       {/* Phone linking bottom sheet */}
-      <BottomSheet visible={showPhoneLink} onClose={() => setShowPhoneLink(false)}>
-        <View className="items-center mb-4">
-          <Ionicons name="call-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
-          <Text className="text-white text-lg font-semibold">
-            {phoneLinkStep === "phone" ? t("settings.linkPhone") : t("settings.verifyCode")}
-          </Text>
-        </View>
-
-        {phoneLinkStep === "phone" ? (
-          <View>
-            <View className="flex-row items-center bg-wave-surface rounded-xl px-4 py-3 mb-4">
-              <TouchableOpacity
-                onPress={() => {
-                  // Simple country selector — cycle through common countries
-                  // Full picker would be too heavy for a bottom sheet
-                }}
-                className="mr-3"
-              >
-                <Text className="text-white text-base">{phoneLinkCountry.flag} {phoneLinkCountry.dial}</Text>
+      <BottomSheet visible={showPhoneLink} onClose={() => { setShowPhoneLink(false); setPhoneLinkStep("phone"); setPhoneLinkCountrySearch(""); }}>
+        {phoneLinkStep === "country" ? (
+          <View style={{ maxHeight: 400 }}>
+            {/* Country picker header */}
+            <View className="flex-row items-center mb-3">
+              <TouchableOpacity onPress={() => { setPhoneLinkStep("phone"); setPhoneLinkCountrySearch(""); }} className="mr-3">
+                <Ionicons name="arrow-back" size={22} color={COLORS.text} />
               </TouchableOpacity>
-              <TextInput
-                value={phoneLinkNumber}
-                onChangeText={setPhoneLinkNumber}
-                placeholder={t("phoneLogin.phoneNumber")}
-                placeholderTextColor={COLORS.muted}
-                keyboardType="phone-pad"
-                className="flex-1 text-white text-base"
-                autoFocus
-              />
+              <View className="flex-1 bg-wave-surface rounded-xl px-3 flex-row items-center" style={{ height: 40 }}>
+                <Ionicons name="search" size={16} color={COLORS.muted} style={{ marginRight: 8 }} />
+                <TextInput
+                  value={phoneLinkCountrySearch}
+                  onChangeText={setPhoneLinkCountrySearch}
+                  placeholder={t("phoneLogin.searchCountry")}
+                  placeholderTextColor={COLORS.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                  className="flex-1 text-white text-sm"
+                  style={{ paddingVertical: 0 }}
+                />
+              </View>
             </View>
-            <TouchableOpacity
-              onPress={handlePhoneLinkSendCode}
-              disabled={phoneLinkLoading || phoneLinkNumber.length < 6}
-              className={`w-full rounded-xl py-3.5 items-center ${
-                phoneLinkNumber.length >= 6 ? "bg-wave-primary" : "bg-wave-surface"
-              }`}
-            >
-              {phoneLinkLoading ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <Text className={`font-semibold ${phoneLinkNumber.length >= 6 ? "text-white" : "text-wave-muted"}`}>
-                  {t("phoneLogin.sendCode")}
-                </Text>
+            {/* Country list */}
+            <FlatList
+              data={COUNTRIES.filter((c) => {
+                if (!phoneLinkCountrySearch) return true;
+                const q = phoneLinkCountrySearch.toLowerCase();
+                return c.name.toLowerCase().includes(q) || c.dial.includes(q);
+              })}
+              keyExtractor={(item) => item.code}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setPhoneLinkCountry(item);
+                    setPhoneLinkStep("phone");
+                    setPhoneLinkCountrySearch("");
+                  }}
+                  className="flex-row items-center py-3 border-b border-wave-surface/50"
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-xl mr-3">{item.flag}</Text>
+                  <Text className="text-white text-sm flex-1">{item.name}</Text>
+                  <Text className="text-wave-muted text-sm">{item.dial}</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            />
           </View>
         ) : (
-          <View>
-            <TextInput
-              value={phoneLinkOtp}
-              onChangeText={(text) => setPhoneLinkOtp(text.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              placeholderTextColor={COLORS.muted}
-              keyboardType="number-pad"
-              className="text-white text-2xl text-center tracking-[12px] bg-wave-surface rounded-xl px-4 py-3 mb-4"
-              autoFocus
-              maxLength={6}
-            />
-            <TouchableOpacity
-              onPress={handlePhoneLinkVerify}
-              disabled={phoneLinkLoading || phoneLinkOtp.length < 6}
-              className={`w-full rounded-xl py-3.5 items-center ${
-                phoneLinkOtp.length >= 6 ? "bg-wave-primary" : "bg-wave-surface"
-              }`}
-            >
-              {phoneLinkLoading ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <Text className={`font-semibold ${phoneLinkOtp.length >= 6 ? "text-white" : "text-wave-muted"}`}>
-                  {t("settings.verifyAndLink")}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          <>
+            <View className="items-center mb-4">
+              <Ionicons name="call-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
+              <Text className="text-white text-lg font-semibold">
+                {phoneLinkStep === "phone" ? t("settings.linkPhone") : t("settings.verifyCode")}
+              </Text>
+            </View>
+
+            {phoneLinkStep === "phone" ? (
+              <View>
+                <View className="flex-row items-center bg-wave-surface rounded-xl px-4 py-3 mb-4">
+                  <TouchableOpacity
+                    onPress={() => setPhoneLinkStep("country")}
+                    className="mr-3 flex-row items-center"
+                  >
+                    <Text className="text-white text-base">{phoneLinkCountry.flag} {phoneLinkCountry.dial}</Text>
+                    <Ionicons name="chevron-down" size={12} color={COLORS.muted} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                  <TextInput
+                    value={phoneLinkNumber}
+                    onChangeText={setPhoneLinkNumber}
+                    placeholder={t("phoneLogin.phoneNumber")}
+                    placeholderTextColor={COLORS.muted}
+                    keyboardType="phone-pad"
+                    className="flex-1 text-white text-base"
+                    autoFocus
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={handlePhoneLinkSendCode}
+                  disabled={phoneLinkLoading || phoneLinkNumber.length < 6}
+                  className={`w-full rounded-xl py-3.5 items-center ${
+                    phoneLinkNumber.length >= 6 ? "bg-wave-primary" : "bg-wave-surface"
+                  }`}
+                >
+                  {phoneLinkLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text className={`font-semibold ${phoneLinkNumber.length >= 6 ? "text-white" : "text-wave-muted"}`}>
+                      {t("phoneLogin.sendCode")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <TextInput
+                  value={phoneLinkOtp}
+                  onChangeText={(text) => setPhoneLinkOtp(text.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  placeholderTextColor={COLORS.muted}
+                  keyboardType="number-pad"
+                  className="text-white text-2xl text-center tracking-[12px] bg-wave-surface rounded-xl px-4 py-3 mb-4"
+                  autoFocus
+                  maxLength={6}
+                />
+                <TouchableOpacity
+                  onPress={handlePhoneLinkVerify}
+                  disabled={phoneLinkLoading || phoneLinkOtp.length < 6}
+                  className={`w-full rounded-xl py-3.5 items-center ${
+                    phoneLinkOtp.length >= 6 ? "bg-wave-primary" : "bg-wave-surface"
+                  }`}
+                >
+                  {phoneLinkLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text className={`font-semibold ${phoneLinkOtp.length >= 6 ? "text-white" : "text-wave-muted"}`}>
+                      {t("settings.verifyAndLink")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
       </BottomSheet>
 

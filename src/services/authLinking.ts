@@ -115,7 +115,7 @@ function mapProvider(provider: string): AuthProvider {
 
 export interface LinkResult {
   success: boolean;
-  error?: "cancelled" | "already_linked" | "identity_exists" | "unknown";
+  error?: "cancelled" | "already_linked" | "identity_exists" | "expired" | "invalid_code" | "unknown";
 }
 
 /**

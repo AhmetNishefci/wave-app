@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { View, Text, LayoutChangeEvent } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
@@ -21,6 +22,7 @@ interface AgeRangeSliderProps {
 }
 
 export function AgeRangeSlider({ min, max, onChangeEnd }: AgeRangeSliderProps) {
+  const { t } = useTranslation();
   const trackWidth = useSharedValue(0);
 
   // Position as fraction (0–1)
@@ -112,7 +114,7 @@ export function AgeRangeSlider({ min, max, onChangeEnd }: AgeRangeSliderProps) {
       {/* Range display */}
       <View className="flex-row justify-between mb-2">
         <Text className="text-white text-sm font-semibold">{displayMin}</Text>
-        <Text className="text-wave-muted text-xs self-center">Age Range</Text>
+        <Text className="text-wave-muted text-xs self-center">{t("gender.ageRange")}</Text>
         <Text className="text-white text-sm font-semibold">{displayMax}</Text>
       </View>
 

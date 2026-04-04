@@ -10,9 +10,10 @@ import { fetchNewToken } from "@/services/wave/ephemeralId";
 import { fetchMatchesFromServer } from "@/services/wave/matches";
 import { unsubscribeFromMatches, subscribeToMatches } from "@/services/wave/realtime";
 import { getCurrentLocation, updateLocationOnServer } from "@/services/location";
+import { WAVE_EXPIRY_MINUTES } from "@/services/ble/constants";
 import { logger } from "@/utils/logger";
 
-const WAVE_EXPIRY_MS = 15 * 60_000; // 15 minutes — matches server-side wave lifetime
+const WAVE_EXPIRY_MS = WAVE_EXPIRY_MINUTES * 60_000;
 
 /**
  * Manages BLE lifecycle with app state transitions.

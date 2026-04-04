@@ -161,5 +161,6 @@ export const useBleStore = create<BleState>((set, get) => ({
       blockedUserIds: new Set(),
       error: null,
       proximityAlertPending: false,
+      resolveGeneration: 0,
     }),
 }));

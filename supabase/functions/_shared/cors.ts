@@ -23,7 +23,7 @@ export function getCorsHeaders(request?: Request): Record<string, string> {
   let allowedOrigin: string;
   if (!origin) {
     // No Origin header = mobile client or server-to-server call. Allow.
-    allowedOrigin = SUPABASE_URL || "*";
+    allowedOrigin = SUPABASE_URL || "";
   } else if (ALLOWED_ORIGINS.includes(origin)) {
     // Known browser origin. Reflect it back.
     allowedOrigin = origin;

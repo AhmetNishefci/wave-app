@@ -3,6 +3,7 @@ import type { WaveResult, Match } from "@/types";
 import { logger } from "@/utils/logger";
 import { getFreshSession } from "./session";
 import NetInfo from "@react-native-community/netinfo";
+import { WAVE_EXPIRY_MINUTES } from "@/services/ble/constants";
 
 /** Result returned by sendWave with optional match data */
 export interface SendWaveResult {
@@ -22,7 +23,7 @@ export interface SendWaveResult {
 // - The pendingWaves UI state in waveStore already shows the user their
 //   pending wave, and useBleLifecycle clears stale ones on foreground
 
-const WAVE_QUEUE_EXPIRY_MS = 15 * 60_000;
+const WAVE_QUEUE_EXPIRY_MS = WAVE_EXPIRY_MINUTES * 60_000;
 
 interface QueuedWave {
   token: string;

@@ -257,7 +257,9 @@ export const useMatchStore = create<MatchState>()(
           return { pendingWaveUserMap: next };
         }),
 
-      reset: () =>
+      reset: () => {
+        _cachedMapRef = null;
+        _cachedArray = [];
         set({
           matchesById: new Map(),
           latestUnseenMatch: null,
@@ -265,7 +267,8 @@ export const useMatchStore = create<MatchState>()(
           matchedTokens: new Set(),
           matchedHandles: new Map<string, ContactHandles>(),
           pendingWaveUserMap: new Map(),
-        }),
+        });
+      },
     }),
     {
       name: "match-store",

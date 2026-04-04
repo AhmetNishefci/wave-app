@@ -443,6 +443,7 @@ Dark theme via NativeWind/Tailwind:
 - **Crash reporting** — Sentry integrated (36 actionable errors + 197 breadcrumbs with BLE/token context), source maps upload pending first production build
 - **BLE range** — Effective ~30 meters (hardware dependent), best under 10 meters
 - **Support emails** — `support@wavenearby.com` inbox not yet configured (emails send but aren't received until Google Workspace or forwarding is set up)
+- **Multi-account provider warning** — login screen warns when switching providers, but can't distinguish between different accounts of the same provider (e.g., two Google accounts). User can recover by signing in with original provider.
 
 ---
 

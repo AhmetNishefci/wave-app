@@ -739,20 +739,21 @@ export default function SettingsScreen() {
                 </View>
               </View>
               {isLinked ? (
-                linkedIdentities.length > 1 ? (
-                  <TouchableOpacity
-                    onPress={() => handleUnlinkIdentity(identity)}
-                    disabled={isUnlinking}
-                  >
-                    {isUnlinking ? (
-                      <ActivityIndicator size="small" color={COLORS.danger} />
-                    ) : (
-                      <Text className="text-wave-danger text-xs font-semibold">{t("settings.unlink")}</Text>
-                    )}
-                  </TouchableOpacity>
-                ) : (
+                <View className="flex-row items-center" style={{ gap: 10 }}>
+                  {linkedIdentities.length > 1 && (
+                    <TouchableOpacity
+                      onPress={() => handleUnlinkIdentity(identity)}
+                      disabled={isUnlinking}
+                    >
+                      {isUnlinking ? (
+                        <ActivityIndicator size="small" color={COLORS.muted} />
+                      ) : (
+                        <Text className="text-wave-muted text-xs">{t("settings.unlink")}</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
                   <Ionicons name="checkmark-circle" size={18} color={COLORS.accent} />
-                )
+                </View>
               ) : (
                 <TouchableOpacity
                   onPress={() => handleLinkProvider(provider)}

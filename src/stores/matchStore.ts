@@ -124,7 +124,7 @@ export const useMatchStore = create<MatchState>()(
 
           return {
             matchesById: next,
-            latestUnseenMatch: match,
+            latestUnseenMatch: match.seen ? state.latestUnseenMatch : match,
             unseenCount: state.unseenCount + (match.seen ? 0 : 1),
             matchedTokens: nextTokens,
             matchedHandles: nextHandles,

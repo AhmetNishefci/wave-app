@@ -8,6 +8,7 @@ import { signInWithGoogle, signInWithApple } from "@/services/auth";
 import {
   getLastAuthProvider,
   getLinkedProviderCache,
+  getKnownProviders,
   type AuthProvider,
 } from "@/services/authLinking";
 import { fetchAndRoute } from "@/utils/routeFromProfile";
@@ -33,13 +34,15 @@ export default function LoginScreen() {
   // Smart provider memory — remember which method the user last signed in with
   const [lastProvider, setLastProvider] = useState<AuthProvider | null>(null);
   const [linkedProviders, setLinkedProviders] = useState<AuthProvider[]>([]);
+  const [knownProviders, setKnownProviders] = useState<AuthProvider[]>([]);
   const [memoryLoaded, setMemoryLoaded] = useState(false);
 
   useEffect(() => {
-    Promise.all([getLastAuthProvider(), getLinkedProviderCache()]).then(
-      ([last, linked]) => {
+    Promise.all([getLastAuthProvider(), getLinkedProviderCache(), getKnownProviders()]).then(
+      ([last, linked, known]) => {
         setLastProvider(last);
         setLinkedProviders(linked);
+        setKnownProviders(known);
         setMemoryLoaded(true);
       },
     );
@@ -50,8 +53,9 @@ export default function LoginScreen() {
   /** Check if tapping this provider would create a new account */
   const wouldCreateNewAccount = (provider: AuthProvider): boolean => {
     if (!lastProvider) return false; // first-time user, all methods are new
-    if (provider === lastProvider) return false; // same method
-    if (linkedProviders.includes(provider)) return false; // already linked
+    if (provider === lastProvider) return false; // same method as last sign-in
+    if (linkedProviders.includes(provider)) return false; // linked to current account
+    if (knownProviders.includes(provider)) return false; // used before on this device (different account exists)
     return true;
   };
 

@@ -26,7 +26,7 @@ try {
   // notifications service depends on expo-notifications native module
 }
 import { logger } from "@/utils/logger";
-import { setLastAuthProvider, getLinkedIdentities } from "@/services/authLinking";
+import { setLastAuthProvider, addKnownProvider, getLinkedIdentities } from "@/services/authLinking";
 
 // Lazy-load expo-apple-authentication — may not be available on Android/Expo Go
 let AppleAuthentication: typeof import("expo-apple-authentication") | null = null;
@@ -83,7 +83,8 @@ export async function signInWithGoogle(): Promise<{
 
     logger.auth("Google Sign In complete");
     setLastAuthProvider("google").catch(() => {});
-    getLinkedIdentities().catch(() => {}); // cache linked providers
+    addKnownProvider("google").catch(() => {});
+    getLinkedIdentities().catch(() => {});
     return { success: true };
   } catch (err: unknown) {
     if (isErrorWithCode(err)) {
@@ -141,6 +142,7 @@ export async function signInWithApple(): Promise<{
 
     logger.auth("Apple Sign In complete");
     setLastAuthProvider("apple").catch(() => {});
+    addKnownProvider("apple").catch(() => {});
     getLinkedIdentities().catch(() => {});
     return { success: true };
   } catch (err: any) {
@@ -227,6 +229,7 @@ export async function verifyPhoneOtp(
 
     logger.auth("Phone sign-in complete");
     setLastAuthProvider("phone").catch(() => {});
+    addKnownProvider("phone").catch(() => {});
     getLinkedIdentities().catch(() => {});
     return { success: true };
   } catch (err) {

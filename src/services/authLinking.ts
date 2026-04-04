@@ -26,6 +26,7 @@ try {
 // --- Storage keys ---
 const LAST_AUTH_PROVIDER_KEY = "wave_last_auth_provider";
 const LINKED_PROVIDERS_KEY = "wave_linked_providers";
+const KNOWN_PROVIDERS_KEY = "wave_known_providers";
 
 export type AuthProvider = "apple" | "google" | "phone";
 
@@ -60,6 +61,32 @@ export async function getLinkedProviderCache(): Promise<AuthProvider[]> {
 export async function setLinkedProviderCache(providers: AuthProvider[]): Promise<void> {
   try {
     await AsyncStorage.setItem(LINKED_PROVIDERS_KEY, JSON.stringify(providers));
+  } catch {
+    // non-fatal
+  }
+}
+
+/**
+ * All providers ever used on this device — persists across sign-outs and
+ * account switches. Used to prevent false-positive "new account" warnings
+ * when returning to a previously used provider.
+ */
+export async function getKnownProviders(): Promise<AuthProvider[]> {
+  try {
+    const value = await AsyncStorage.getItem(KNOWN_PROVIDERS_KEY);
+    return value ? JSON.parse(value) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addKnownProvider(provider: AuthProvider): Promise<void> {
+  try {
+    const existing = await getKnownProviders();
+    if (!existing.includes(provider)) {
+      existing.push(provider);
+      await AsyncStorage.setItem(KNOWN_PROVIDERS_KEY, JSON.stringify(existing));
+    }
   } catch {
     // non-fatal
   }

@@ -239,29 +239,22 @@ export default function LoginScreen() {
               key={btn.key}
               onPress={btn.onPress}
               disabled={loadingProvider !== null}
-              className={`w-full rounded-2xl py-4 flex-row items-center justify-center ${
-                isPrimary
-                  ? "bg-wave-primary"
-                  : btn.key === "apple"
-                    ? "bg-white"
-                    : "bg-wave-surface border border-wave-muted/30"
-              }`}
+              className={`w-full rounded-2xl py-4 flex-row items-center justify-center ${btn.bgClass}`}
+              style={!isPrimary && isReturningUser ? { opacity: 0.7 } : undefined}
               activeOpacity={0.8}
             >
               {isLoading ? (
-                <ActivityIndicator color={isPrimary ? "white" : btn.iconColor} size="small" />
+                <ActivityIndicator color={btn.iconColor} size="small" />
               ) : (
                 <>
                   <Ionicons
                     name={btn.icon}
                     size={20}
-                    color={isPrimary ? "white" : btn.iconColor}
+                    color={btn.iconColor}
                     style={{ marginRight: 8 }}
                   />
                   <Text
-                    className={`text-base font-semibold ${
-                      isPrimary ? "text-white" : btn.textColor
-                    }`}
+                    className={`text-base font-semibold ${btn.textColor}`}
                   >
                     {btn.label}
                   </Text>

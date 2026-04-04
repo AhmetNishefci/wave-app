@@ -169,6 +169,27 @@ export default function RadarScreen() {
   const [selectedPeer, setSelectedPeer] = useState<NearbyPeer | null>(null);
   const [showAllPeers, setShowAllPeers] = useState(false);
 
+  // DEV ONLY: Triple-tap radar title to seed fake data for screenshots
+  const devTapCount = useRef(0);
+  const devTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleDevTap = useCallback(() => {
+    if (!__DEV__) return;
+    devTapCount.current++;
+    if (devTapTimer.current) clearTimeout(devTapTimer.current);
+    if (devTapCount.current === 3) {
+      devTapCount.current = 0;
+      Alert.alert("Dev Tools", "Seed data for screenshots", [
+        { text: "Seed Peers", onPress: () => seedFakePeers() },
+        { text: "Seed Matches", onPress: () => seedFakeMatches() },
+        { text: "Trigger Match", onPress: () => triggerFakeMatch() },
+        { text: "Clear All", onPress: () => { clearFakePeers(); clearFakeMatches(); } },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    } else {
+      devTapTimer.current = setTimeout(() => { devTapCount.current = 0; }, 500);
+    }
+  }, []);
+
   // Inline note editor
   const currentNote = useAuthStore((s) => s.note);
   const [editingNote, setEditingNote] = useState(false);
@@ -516,7 +537,7 @@ export default function RadarScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between mb-4">
         <View>
-          <Text className="text-3xl font-bold text-white">{t("radar.title")}</Text>
+          <Text className="text-3xl font-bold text-white" onPress={handleDevTap}>{t("radar.title")}</Text>
           <View className="flex-row items-center mt-1">
             {isDiscoveryActive && totalPeers > 0 && <LiveDot />}
             <Text className="text-wave-muted text-sm">
@@ -529,46 +550,6 @@ export default function RadarScreen() {
           </View>
         </View>
       </View>
-
-      {/* DEV: Seed/clear fake data for UI testing */}
-      {__DEV__ && (
-        <View className="mb-2" style={{ gap: 6 }}>
-          <View className="flex-row" style={{ gap: 8 }}>
-            <TouchableOpacity
-              onPress={() => { seedFakePeers(); useBleStore.getState().setDiscoveryActive(true); }}
-              className="bg-yellow-600/30 rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-yellow-400 text-xs font-semibold">Seed Peers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={clearFakePeers}
-              className="bg-red-600/30 rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-red-400 text-xs font-semibold">Clear Peers</Text>
-            </TouchableOpacity>
-          </View>
-          <View className="flex-row" style={{ gap: 8 }}>
-            <TouchableOpacity
-              onPress={seedFakeMatches}
-              className="bg-pink-600/30 rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-pink-400 text-xs font-semibold">Seed Matches</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={triggerFakeMatch}
-              className="bg-green-600/30 rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-green-400 text-xs font-semibold">Trigger Match</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={clearFakeMatches}
-              className="bg-red-600/30 rounded-lg px-3 py-1.5"
-            >
-              <Text className="text-red-400 text-xs font-semibold">Clear Matches</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
       {/* Status bar */}
       <BleStatusBar

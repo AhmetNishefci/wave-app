@@ -169,8 +169,26 @@ export default function LoginScreen() {
         ))}
       </View>
 
-      {/* Sign in buttons — fixed order: Apple, Google, Phone */}
+      {/* Sign in buttons — fixed order: Google, Apple, Phone */}
       <View className="w-full" style={{ gap: 12 }}>
+        <TouchableOpacity
+          onPress={() => handleSignIn("google")}
+          disabled={loadingProvider !== null}
+          className="w-full bg-wave-primary rounded-2xl py-4 flex-row items-center justify-center"
+          activeOpacity={0.8}
+        >
+          {loadingProvider === "google" ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={20} color="white" style={{ marginRight: 8 }} />
+              <Text className="text-white text-base font-semibold">
+                {t("login.continueGoogle")}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
         <TouchableOpacity
           onPress={() => handleSignIn("apple")}
           disabled={loadingProvider !== null}
@@ -184,24 +202,6 @@ export default function LoginScreen() {
               <Ionicons name="logo-apple" size={20} color="black" style={{ marginRight: 8 }} />
               <Text className="text-black text-base font-semibold">
                 {t("login.continueApple")}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => handleSignIn("google")}
-          disabled={loadingProvider !== null}
-          className="w-full bg-wave-surface rounded-2xl py-4 flex-row items-center justify-center border border-wave-muted/30"
-          activeOpacity={0.8}
-        >
-          {loadingProvider === "google" ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <>
-              <Ionicons name="logo-google" size={20} color="white" style={{ marginRight: 8 }} />
-              <Text className="text-white text-base font-semibold">
-                {t("login.continueGoogle")}
               </Text>
             </>
           )}

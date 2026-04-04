@@ -51,6 +51,17 @@ function computeUnseenCount(map: Map<string, Match>): number {
   return count;
 }
 
+/** Find the most recent unseen match from the Map */
+function findLatestUnseen(map: Map<string, Match>): Match | null {
+  let latest: Match | null = null;
+  for (const m of map.values()) {
+    if (!m.seen && (!latest || new Date(m.createdAt) > new Date(latest.createdAt))) {
+      latest = m;
+    }
+  }
+  return latest;
+}
+
 export const useMatchStore = create<MatchState>()(
   persist(
     (set, get) => ({
@@ -124,7 +135,9 @@ export const useMatchStore = create<MatchState>()(
 
           return {
             matchesById: next,
-            latestUnseenMatch: match.seen ? state.latestUnseenMatch : match,
+            latestUnseenMatch: match.seen
+              ? state.latestUnseenMatch
+              : findLatestUnseen(next),
             unseenCount: state.unseenCount + (match.seen ? 0 : 1),
             matchedTokens: nextTokens,
             matchedHandles: nextHandles,
@@ -138,18 +151,21 @@ export const useMatchStore = create<MatchState>()(
           const next = new Map(state.matchesById);
           next.delete(matchId);
 
-          // Clean up matchedTokens so the peer reverts to "Wave" on radar
+          // Clean up ALL matchedTokens for this user so peer reverts to "Wave" on radar
           let nextTokens = state.matchedTokens;
           let nextHandles = state.matchedHandles;
           if (removed) {
             const peers = useBleStore.getState().nearbyPeers;
+            let cloned = false;
             for (const [token, peer] of peers) {
               if (peer.userId === removed.matchedUserId && state.matchedTokens.has(token)) {
-                nextTokens = new Set(state.matchedTokens);
+                if (!cloned) {
+                  nextTokens = new Set(state.matchedTokens);
+                  nextHandles = new Map(state.matchedHandles);
+                  cloned = true;
+                }
                 nextTokens.delete(token);
-                nextHandles = new Map(state.matchedHandles);
                 nextHandles.delete(token);
-                break;
               }
             }
           }
@@ -158,10 +174,7 @@ export const useMatchStore = create<MatchState>()(
             matchesById: next,
             matchedTokens: nextTokens,
             matchedHandles: nextHandles,
-            latestUnseenMatch:
-              state.latestUnseenMatch?.matchId === matchId
-                ? null
-                : state.latestUnseenMatch,
+            latestUnseenMatch: findLatestUnseen(next),
             unseenCount: removed && !removed.seen
               ? Math.max(0, state.unseenCount - 1)
               : state.unseenCount,
@@ -213,10 +226,7 @@ export const useMatchStore = create<MatchState>()(
           return {
             matchesById: next,
             unseenCount: Math.max(0, state.unseenCount - 1),
-            latestUnseenMatch:
-              state.latestUnseenMatch?.matchId === matchId
-                ? null
-                : state.latestUnseenMatch,
+            latestUnseenMatch: findLatestUnseen(next),
           };
         }),
 
@@ -287,6 +297,7 @@ export const useMatchStore = create<MatchState>()(
           }
           base.matchesById = map;
           base.unseenCount = computeUnseenCount(map);
+          base.latestUnseenMatch = findLatestUnseen(map);
           logger.wave(`Hydrated ${map.size} matches from storage`);
         } else if (persisted) {
           // Persisted data exists but is in unexpected format — log for debugging

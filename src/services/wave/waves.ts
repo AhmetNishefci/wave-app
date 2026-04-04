@@ -111,7 +111,10 @@ export async function sendWave(
         logger.wave("Wave failed while offline, queuing for retry", {
           token: targetEphemeralToken.substring(0, 8),
         });
-        offlineQueue.push({ token: targetEphemeralToken, queuedAt: Date.now() });
+        // Dedup: don't queue the same token twice
+        if (!offlineQueue.some((w) => w.token === targetEphemeralToken)) {
+          offlineQueue.push({ token: targetEphemeralToken, queuedAt: Date.now() });
+        }
         startNetworkListener();
         return { status: "pending" };
       }

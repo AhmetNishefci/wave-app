@@ -155,11 +155,11 @@ function scheduleReconnect(userId: string): void {
     reconnectTimer = null;
     if (currentUserId !== userId) return; // User changed, skip
 
-    // Skip reconnect attempt if device is offline — wait for next scheduled retry
+    // Skip reconnect attempt if device is offline — useBleLifecycle will
+    // re-subscribe when network returns, so don't spin a reconnect loop here.
     const netState = await NetInfo.fetch();
     if (!netState.isConnected) {
-      logger.wave("Skipping realtime reconnect — device is offline");
-      scheduleReconnect(userId);
+      logger.wave("Skipping realtime reconnect — device is offline, waiting for network restore");
       return;
     }
 

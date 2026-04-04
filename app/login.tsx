@@ -31,7 +31,7 @@ export default function LoginScreen() {
   const [loadingProvider, setLoadingProvider] = useState<"google" | "apple" | null>(null);
   const signingInRef = useRef(false);
 
-  // Smart provider memory — remember which method the user last signed in with
+  // Provider memory for mismatch warnings
   const [lastProvider, setLastProvider] = useState<AuthProvider | null>(null);
   const [linkedProviders, setLinkedProviders] = useState<AuthProvider[]>([]);
   const [knownProviders, setKnownProviders] = useState<AuthProvider[]>([]);
@@ -48,21 +48,18 @@ export default function LoginScreen() {
     );
   }, []);
 
-  const isReturningUser = memoryLoaded && lastProvider !== null;
-
   /** Check if tapping this provider would create a new account */
   const wouldCreateNewAccount = (provider: AuthProvider): boolean => {
-    if (!lastProvider) return false; // first-time user, all methods are new
-    if (provider === lastProvider) return false; // same method as last sign-in
-    if (linkedProviders.includes(provider)) return false; // linked to current account
-    if (knownProviders.includes(provider)) return false; // used before on this device (different account exists)
+    if (!lastProvider) return false;
+    if (provider === lastProvider) return false;
+    if (linkedProviders.includes(provider)) return false;
+    if (knownProviders.includes(provider)) return false;
     return true;
   };
 
   const handleSignIn = async (provider: "google" | "apple") => {
     if (signingInRef.current) return;
 
-    // Warn if this would create a new account
     if (wouldCreateNewAccount(provider)) {
       const providerName = provider === "apple" ? "Apple" : "Google";
       const lastProviderName = lastProvider === "apple" ? "Apple" : lastProvider === "google" ? "Google" : t("login.phone");
@@ -132,55 +129,6 @@ export default function LoginScreen() {
     router.push("/phone-login");
   };
 
-  // Provider button config
-  const providerButtons: {
-    key: AuthProvider;
-    icon: "logo-apple" | "logo-google" | "call-outline";
-    label: string;
-    onPress: () => void;
-    isPrimary?: boolean;
-    bgClass: string;
-    textColor: string;
-    iconColor: string;
-  }[] = [
-    {
-      key: "apple",
-      icon: "logo-apple",
-      label: t("login.continueApple"),
-      onPress: () => handleSignIn("apple"),
-      bgClass: "bg-white",
-      textColor: "text-black",
-      iconColor: "black",
-    },
-    {
-      key: "google",
-      icon: "logo-google",
-      label: t("login.continueGoogle"),
-      onPress: () => handleSignIn("google"),
-      bgClass: "bg-wave-surface border border-wave-muted/30",
-      textColor: "text-white",
-      iconColor: "white",
-    },
-    {
-      key: "phone",
-      icon: "call-outline",
-      label: t("login.continuePhone"),
-      onPress: handlePhonePress,
-      bgClass: "bg-wave-surface border border-wave-muted/30",
-      textColor: "text-white",
-      iconColor: "white",
-    },
-  ];
-
-  // For returning users, put their last provider first and make it primary
-  const sortedButtons = isReturningUser
-    ? [
-        ...providerButtons.filter((b) => b.key === lastProvider).map((b) => ({ ...b, isPrimary: true })),
-        ...providerButtons.filter((b) => b.key !== lastProvider),
-      ]
-    : providerButtons;
-
-  // While loading provider memory, show nothing to avoid flash
   if (!memoryLoaded) return <View className="flex-1 bg-wave-bg" />;
 
   return (
@@ -207,69 +155,70 @@ export default function LoginScreen() {
         />
       </View>
 
-      <Text className="text-5xl font-bold text-white mb-3">{t("common.wave")}</Text>
+      <Text className="text-5xl font-bold text-white mb-10">{t("common.wave")}</Text>
 
-      {isReturningUser && (
-        <Text className="text-wave-muted text-sm mb-8">{t("login.welcomeBack")}</Text>
-      )}
-
-      {/* How it works — only for first-time users */}
-      {!isReturningUser && (
-        <View className="mb-12 items-center mt-7">
-          {STEPS.map((step, i) => (
-            <View key={i} className="flex-row items-center mb-5">
-              <View className="w-10 h-10 rounded-full bg-wave-surface items-center justify-center mr-3">
-                <Ionicons name={step.icon} size={20} color={COLORS.primary} />
-              </View>
-              <Text className="text-white text-sm">{step.text}</Text>
+      {/* How it works */}
+      <View className="mb-12 items-center">
+        {STEPS.map((step, i) => (
+          <View key={i} className="flex-row items-center mb-5">
+            <View className="w-10 h-10 rounded-full bg-wave-surface items-center justify-center mr-3">
+              <Ionicons name={step.icon} size={20} color={COLORS.primary} />
             </View>
-          ))}
-        </View>
-      )}
-
-      {/* Sign in buttons */}
-      <View className={`w-full ${isReturningUser ? "mt-4" : ""}`} style={{ gap: 12 }}>
-        {sortedButtons.map((btn) => {
-          const isPrimary = btn.isPrimary;
-          const isLoading = loadingProvider === btn.key;
-          const isPhone = btn.key === "phone";
-
-          return (
-            <TouchableOpacity
-              key={btn.key}
-              onPress={btn.onPress}
-              disabled={loadingProvider !== null}
-              className={`w-full rounded-2xl py-4 flex-row items-center justify-center ${btn.bgClass}`}
-              style={!isPrimary && isReturningUser ? { opacity: 0.7 } : undefined}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={btn.iconColor} size="small" />
-              ) : (
-                <>
-                  <Ionicons
-                    name={btn.icon}
-                    size={20}
-                    color={btn.iconColor}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text
-                    className={`text-base font-semibold ${btn.textColor}`}
-                  >
-                    {btn.label}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+            <Text className="text-white text-sm">{step.text}</Text>
+          </View>
+        ))}
       </View>
 
-      {isReturningUser && (
-        <Text className="text-wave-muted text-xs text-center mt-3 leading-5 px-4">
-          {t("login.linkHint")}
-        </Text>
-      )}
+      {/* Sign in buttons — fixed order: Apple, Google, Phone */}
+      <View className="w-full" style={{ gap: 12 }}>
+        <TouchableOpacity
+          onPress={() => handleSignIn("apple")}
+          disabled={loadingProvider !== null}
+          className="w-full bg-white rounded-2xl py-4 flex-row items-center justify-center"
+          activeOpacity={0.8}
+        >
+          {loadingProvider === "apple" ? (
+            <ActivityIndicator color="black" size="small" />
+          ) : (
+            <>
+              <Ionicons name="logo-apple" size={20} color="black" style={{ marginRight: 8 }} />
+              <Text className="text-black text-base font-semibold">
+                {t("login.continueApple")}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleSignIn("google")}
+          disabled={loadingProvider !== null}
+          className="w-full bg-wave-surface rounded-2xl py-4 flex-row items-center justify-center border border-wave-muted/30"
+          activeOpacity={0.8}
+        >
+          {loadingProvider === "google" ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={20} color="white" style={{ marginRight: 8 }} />
+              <Text className="text-white text-base font-semibold">
+                {t("login.continueGoogle")}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handlePhonePress}
+          disabled={loadingProvider !== null}
+          className="w-full bg-wave-surface rounded-2xl py-4 flex-row items-center justify-center border border-wave-muted/30"
+          activeOpacity={0.8}
+        >
+          <Ionicons name="call-outline" size={20} color="white" style={{ marginRight: 8 }} />
+          <Text className="text-white text-base font-semibold">
+            {t("login.continuePhone")}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <Text className="text-wave-muted text-xs text-center mt-4 leading-5">
         {t("common.identityHidden")}

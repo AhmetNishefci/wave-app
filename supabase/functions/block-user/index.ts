@@ -9,9 +9,7 @@ const adminClient = createClient(
 );
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-// TODO: After verifying wave-app.com domain in Resend, run:
-//   supabase secrets set SUPPORT_EMAIL=support@wave-app.com
-const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "ahmetnishefcii@gmail.com";
+const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "support@wavenearby.com";
 const REPORT_THRESHOLD = 3;
 
 /**
@@ -314,7 +312,7 @@ async function sendReportEmails(
       reporter.email,
       "We received your report — Wave",
       buildReporterAckHtml(reasonLabel),
-      reporter.email, // reply-to themselves (so they can respond to this thread)
+      SUPPORT_EMAIL, // reply-to support so user can reply
     );
   }
 }
@@ -336,7 +334,6 @@ async function sendEmail(
   html: string,
   replyTo?: string,
 ): Promise<void> {
-  // TODO: Change from address after verifying wave-app.com domain in Resend
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -344,7 +341,7 @@ async function sendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Wave <onboarding@resend.dev>",
+      from: "Wave <support@wavenearby.com>",
       to: [to],
       reply_to: replyTo ? [replyTo] : undefined,
       subject,

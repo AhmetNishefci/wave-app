@@ -110,6 +110,7 @@ Wave-app/
 │   │   └── useNotifications.ts   # Push notification registration
 │   ├── services/
 │   │   ├── auth.ts               # Google/Apple/Phone auth + sign-out
+│   │   ├── authLinking.ts        # Account identity linking (link/unlink providers)
 │   │   ├── supabase.ts           # Supabase client init
 │   │   ├── profile.ts            # User profile CRUD + timezone sync
 │   │   ├── notifications.ts      # Push token registration
@@ -171,7 +172,7 @@ Wave-app/
 │   │   ├── delete-account/       # GDPR account deletion
 │   │   ├── auth-instagram/       # Instagram OAuth (backend ready, UI pending)
 │   │   └── auth-callback/        # OAuth callback handler
-│   └── migrations/               # 16 SQL migrations
+│   └── migrations/               # 21 SQL migrations
 └── assets/                       # App icons, splash screen, sounds
 ```
 
@@ -391,28 +392,20 @@ Dark theme via NativeWind/Tailwind:
 
 ## TODO
 
-### Before First Build
-- [x] ~~Integrate Sentry for crash reporting~~ ✅ Done
-- [x] ~~Deploy website to Vercel~~ ✅ Live at wave-website-dun.vercel.app
-- [x] ~~APS entitlement~~ ✅ Dynamic — auto-switches dev/production based on EAS build profile
-- [ ] Run `npx sentry-cli login` (one-time — enables source map upload for readable crash traces)
-
 ### Before App Store Submission
-- [ ] Buy `wave-app.com` domain → connect to Vercel → update Privacy Policy & Terms URLs
-- [ ] Verify `wave-app.com` in Resend → update sender from `onboarding@resend.dev` to `support@wave-app.com`
-- [ ] Update `SUPPORT_EMAIL` in `send-support-email` edge function from dev email to `support@wave-app.com`
+- [ ] Set up real inbox for `support@wavenearby.com` (Google Workspace or forwarding)
 - [ ] Replace download button placeholders with real App Store / Play Store URLs
 - [ ] Prepare App Store assets: screenshots, description, keywords, promotional text
 - [ ] Fill in App Store privacy nutrition labels (data collection declarations)
 - [ ] Add basic analytics (app opens, waves sent, matches created, DAU)
 - [ ] Capture Apple Sign-In name/email on first launch (if App Review requires it)
+- [ ] Run `npx sentry-cli login` (enables source map upload for readable crash traces)
 
 ### Backlog
 - [ ] **Android BLE Peripheral** — Implement advertising on Android (scanning already works)
 - [ ] **Instagram OAuth** — Wire backend (ready) into login UI
 - [ ] **Monetization** — Premium features, subscription model
 - [ ] **Test Suite** — Unit tests for stores, services, BLE parsing; integration tests for wave/match
-- [ ] **Account Linking** — Let users add multiple auth methods to one account
 - [ ] **Admin Dashboard** — Moderation interface for reports and tickets
 - [ ] **Supabase Pro** — Scale beyond free tier limits (200 Realtime connections, 2 concurrent Edge Functions)
 - [ ] **Database Indexes** — Add indexes on `ephemeral_ids(expires_at)`, `waves(is_consumed, expires_at)` for cleanup performance at scale
@@ -427,8 +420,7 @@ Dark theme via NativeWind/Tailwind:
 - **No automated tests** — All testing is manual
 - **Crash reporting** — Sentry integrated (36 actionable errors + 197 breadcrumbs with BLE/token context), source maps upload pending first production build
 - **BLE range** — Effective ~30 meters (hardware dependent), best under 10 meters
-- **No account linking** — Apple, Google, and Phone sign-ins create separate accounts
-- **Support emails** sent from `onboarding@resend.dev` until domain verification (may hit spam)
+- **Support emails** — `support@wavenearby.com` inbox not yet configured (emails send but aren't received until Google Workspace or forwarding is set up)
 
 ---
 

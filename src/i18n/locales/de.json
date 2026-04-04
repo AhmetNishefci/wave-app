@@ -14,6 +14,8 @@
     "notSet": "Nicht gesetzt",
     "username": "Benutzername",
     "somethingWentWrong": "Da ist was schiefgelaufen",
+    "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut, und wenn das Problem weiterhin besteht, starte die App neu.",
+    "tryAgain": "Erneut versuchen",
     "openSettings": "Einstellungen öffnen",
     "language": "Sprache",
     "signInFailed": "Anmeldung fehlgeschlagen",

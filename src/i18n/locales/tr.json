@@ -14,6 +14,8 @@
     "notSet": "Belirtilmemiş",
     "username": "kullanıcı adı",
     "somethingWentWrong": "Bir şeyler ters gitti",
+    "unexpectedError": "Beklenmeyen bir hata oluştu. Tekrar dene, sorun devam ederse uygulamayı yeniden başlat.",
+    "tryAgain": "Tekrar dene",
     "openSettings": "Ayarları Aç",
     "language": "Dil",
     "signInFailed": "Giriş başarısız",

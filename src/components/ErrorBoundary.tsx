@@ -2,6 +2,7 @@ import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import * as Sentry from "@sentry/react-native";
 import { COLORS } from "@/constants/colors";
+import i18n from "@/i18n";
 
 interface Props {
   children: ReactNode;
@@ -58,7 +59,7 @@ export class ErrorBoundary extends Component<Props, State> {
               textAlign: "center",
             }}
           >
-            Something went wrong
+            {i18n.t("common.somethingWentWrong")}
           </Text>
           <Text
             style={{
@@ -69,8 +70,7 @@ export class ErrorBoundary extends Component<Props, State> {
               lineHeight: 20,
             }}
           >
-            An unexpected error occurred. Try again, and if the problem
-            persists, restart the app.
+            {i18n.t("common.unexpectedError")}
           </Text>
           <TouchableOpacity
             onPress={this.handleReset}
@@ -82,7 +82,7 @@ export class ErrorBoundary extends Component<Props, State> {
             }}
           >
             <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: "600" }}>
-              Try Again
+              {i18n.t("common.tryAgain")}
             </Text>
           </TouchableOpacity>
         </View>

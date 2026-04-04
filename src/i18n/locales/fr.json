@@ -14,6 +14,8 @@
     "notSet": "Non défini",
     "username": "pseudo",
     "somethingWentWrong": "Un truc a planté",
+    "unexpectedError": "Une erreur inattendue s'est produite. Réessaie, et si le problème persiste, redémarre l'appli.",
+    "tryAgain": "Réessayer",
     "openSettings": "Ouvrir les réglages",
     "language": "Langue",
     "signInFailed": "Connexion échouée",

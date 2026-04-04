@@ -401,15 +401,37 @@ Dark theme via NativeWind/Tailwind:
 - [ ] Capture Apple Sign-In name/email on first launch (if App Review requires it)
 - [ ] Run `npx sentry-cli login` (enables source map upload for readable crash traces)
 
-### Backlog
-- [ ] **Android BLE Peripheral** — Implement advertising on Android (scanning already works)
-- [ ] **Instagram OAuth** — Wire backend (ready) into login UI
-- [ ] **Monetization** — Premium features, subscription model
-- [ ] **Test Suite** — Unit tests for stores, services, BLE parsing; integration tests for wave/match
-- [ ] **Admin Dashboard** — Moderation interface for reports and tickets
-- [ ] **Supabase Pro** — Scale beyond free tier limits (200 Realtime connections, 2 concurrent Edge Functions)
-- [ ] **Database Indexes** — Add indexes on `ephemeral_ids(expires_at)`, `waves(is_consumed, expires_at)` for cleanup performance at scale
-- [ ] **Sentry Performance Transactions** — Wave lifecycle p95 latency tracking when traffic justifies it
+### Post-Launch Roadmap
+
+#### v1.1 — Stability & Operations
+- [ ] Set up `support@wavenearby.com` inbox (Google Workspace or forwarding)
+- [ ] Upload Sentry source maps (`npx sentry-cli login`)
+- [ ] Add basic analytics (app opens, waves sent, matches created, DAU)
+- [ ] Admin dashboard for moderation (reports, blocks, tickets)
+- [ ] Supabase Pro when approaching free tier limits (200 Realtime connections, 2 concurrent Edge Functions)
+
+#### v1.2 — Android Launch
+- [ ] Android BLE Peripheral — implement advertising (scanning already works)
+- [ ] Test and submit to Google Play Store
+- [ ] Update website download buttons with real Store URLs
+
+#### v1.3 — Social Expansion
+- [ ] Instagram OAuth — wire backend (ready) into login UI
+- [ ] Additional social platforms (TikTok, X/Twitter handles)
+- [ ] In-app chat between matches (replace external social redirect)
+
+#### v2.0 — Explore Mode (GPS Discovery)
+- [ ] GPS-based discovery for broader range ("Explore" tab alongside Radar)
+- [ ] Location-based feed when no BLE peers nearby
+- [ ] Distance filters and radius controls
+- [ ] Server-side proximity matching via PostGIS (infrastructure already in place)
+
+#### Ongoing
+- [ ] Monetization — premium features, subscription model
+- [ ] Test suite — unit tests for stores, services, BLE parsing; integration tests for wave/match
+- [ ] Database indexes at scale — `ephemeral_ids(expires_at)`, `waves(is_consumed, expires_at)`
+- [ ] Sentry performance transactions — wave lifecycle p95 latency tracking
+- [ ] Localization — expand beyond 7 languages based on user demand
 
 ---
 

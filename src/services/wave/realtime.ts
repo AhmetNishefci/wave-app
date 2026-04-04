@@ -1,8 +1,10 @@
 import { supabase } from "../supabase";
 import { useWaveStore } from "@/stores/waveStore";
 import { useMatchStore } from "@/stores/matchStore";
+import { useBleStore } from "@/stores/bleStore";
 import { logger } from "@/utils/logger";
 import { clearWaveStateForUser } from "@/utils/waveCleanup";
+import { fetchMatchesFromServer } from "./matches";
 import NetInfo from "@react-native-community/netinfo";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -110,6 +112,15 @@ function createChannel(userId: string): void {
 
       if (status === "SUBSCRIBED") {
         reconnectAttempts = 0; // Reset backoff on success
+
+        // Reconcile state after the WebSocket actually connects.
+        // Broadcasts sent during the async connection window (100-500ms)
+        // are lost — they're fire-and-forget to absent subscribers.
+        // This catches missed waves, matches, and removals by re-querying
+        // server truth immediately after the connection is live.
+        useBleStore.getState().bumpResolveGeneration();
+        fetchMatchesFromServer().catch(() => {});
+        logger.wave("Realtime connected — reconciliation triggered");
       }
 
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {

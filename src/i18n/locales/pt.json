@@ -109,7 +109,8 @@
     "skipForNow": "Pular por enquanto",
     "optional": "Isso é opcional. Você pode adicionar ou mudar nos ajustes depois.",
     "saveError": "Não foi possível salvar sua nota. Você pode tentar de novo nos ajustes.",
-    "continueButton": "Continuar"
+    "continueButton": "Continuar",
+    "inappropriate": "Escolha um texto diferente. Este contém linguagem não permitida."
   },
 
   "nearbyAlerts": {

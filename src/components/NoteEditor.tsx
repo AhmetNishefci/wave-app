@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/stores/authStore";
 import { saveNote } from "@/services/profile";
+import { containsProfanity } from "@/utils/contentFilter";
 import { impactLight } from "@/utils/haptics";
 import { COLORS } from "@/constants/colors";
 
@@ -25,6 +26,13 @@ export function NoteEditor({ setToast }: Props) {
     savingNoteRef.current = true;
 
     const trimmed = noteInput.trim();
+
+    if (trimmed && containsProfanity(trimmed)) {
+      savingNoteRef.current = false;
+      setToast({ message: t("note.inappropriate"), variant: "error" });
+      return;
+    }
+
     setSavingNote(true);
     impactLight();
 

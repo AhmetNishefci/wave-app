@@ -109,7 +109,8 @@
     "skipForNow": "Skip for now",
     "optional": "This is optional. You can always add or change it in settings.",
     "saveError": "Your note couldn't be saved. You can try again in settings.",
-    "continueButton": "Continue"
+    "continueButton": "Continue",
+    "inappropriate": "Please choose a different note. This one contains language that isn't allowed."
   },
 
   "nearbyAlerts": {

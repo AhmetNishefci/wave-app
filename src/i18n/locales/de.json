@@ -109,7 +109,8 @@
     "skipForNow": "Erstmal überspringen",
     "optional": "Das ist optional. Du kannst es jederzeit in den Einstellungen ändern.",
     "saveError": "Deine Notiz konnte nicht gespeichert werden. Versuch's nochmal in den Einstellungen.",
-    "continueButton": "Weiter"
+    "continueButton": "Weiter",
+    "inappropriate": "Bitte wähle einen anderen Text. Dieser enthält Sprache, die nicht erlaubt ist."
   },
 
   "nearbyAlerts": {

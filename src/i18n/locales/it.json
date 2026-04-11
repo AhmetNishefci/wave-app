@@ -109,7 +109,8 @@
     "skipForNow": "Salta per ora",
     "optional": "È opzionale. Puoi sempre aggiungerlo o cambiarlo nelle impostazioni.",
     "saveError": "Non è stato possibile salvare la nota. Puoi riprovare nelle impostazioni.",
-    "continueButton": "Continua"
+    "continueButton": "Continua",
+    "inappropriate": "Scegli un testo diverso. Questo contiene linguaggio non consentito."
   },
 
   "nearbyAlerts": {

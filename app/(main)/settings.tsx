@@ -19,6 +19,7 @@ import {
   type AuthProvider,
 } from "@/services/authLinking";
 import { saveInstagramHandle, saveSnapchatHandle, updateGenderPreference, updateAgePreference, saveNote, saveNearbyAlertsPreference, saveDailyPushesPreference } from "@/services/profile";
+import { containsProfanity } from "@/utils/contentFilter";
 import { requestLocationPermission, hasLocationPermission, isLocationBlocked, resetLocationCache } from "@/services/location";
 import { supabase } from "@/services/supabase";
 import { waveBleManager } from "@/services/ble/bleManager";
@@ -317,6 +318,12 @@ export default function SettingsScreen() {
 
   const handleSaveNote = async () => {
     const trimmed = noteInput.trim();
+
+    if (trimmed && containsProfanity(trimmed)) {
+      showToast(t("note.inappropriate"), "error");
+      return;
+    }
+
     impactLight();
     setSavingNote(true);
 

@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { logger } from "@/utils/logger";
 import { getLocales } from "expo-localization";
 import type { Gender, GenderPreference } from "@/types";
+import { containsProfanity } from "@/utils/contentFilter";
 
 /**
  * No-op retained for backward compatibility — callers (auth.ts signOut)
@@ -435,6 +436,12 @@ export async function saveNote(rawNote: string | null): Promise<boolean> {
 
     if (note && note.length > 40) {
       logger.warn("saveNote: exceeds 40 chars", { length: note.length });
+      return false;
+    }
+
+    // Content filter safety net — UI should check first for better UX
+    if (note && containsProfanity(note)) {
+      logger.warn("saveNote: blocked by content filter", { note });
       return false;
     }
 

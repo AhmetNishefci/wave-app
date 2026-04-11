@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { saveNote } from "@/services/profile";
+import { containsProfanity } from "@/utils/contentFilter";
 import { useAuthStore } from "@/stores/authStore";
 import { impactMedium } from "@/utils/haptics";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -43,6 +44,11 @@ export default function NoteScreen() {
       impactMedium();
       useAuthStore.getState().setNote(null);
       router.replace("/nearby-alerts");
+      return;
+    }
+
+    if (containsProfanity(trimmed)) {
+      Alert.alert(t("common.error"), t("note.inappropriate"));
       return;
     }
 

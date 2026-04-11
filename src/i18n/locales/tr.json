@@ -109,7 +109,8 @@
     "skipForNow": "Şimdilik atla",
     "optional": "Bu isteğe bağlı. İstediğin zaman ayarlardan ekleyebilir veya değiştirebilirsin.",
     "saveError": "Notun kaydedilemedi. Ayarlardan tekrar deneyebilirsin.",
-    "continueButton": "Devam"
+    "continueButton": "Devam",
+    "inappropriate": "Lütfen farklı bir metin seçin. Bu metin izin verilmeyen bir dil içeriyor."
   },
 
   "nearbyAlerts": {

@@ -109,7 +109,8 @@
     "skipForNow": "Passer pour l'instant",
     "optional": "C'est optionnel. Tu pourras toujours la modifier dans les réglages.",
     "saveError": "Ta note n'a pas pu être enregistrée. Réessaie dans les réglages.",
-    "continueButton": "Continuer"
+    "continueButton": "Continuer",
+    "inappropriate": "Veuillez choisir un autre texte. Celui-ci contient un langage non autorisé."
   },
 
   "nearbyAlerts": {

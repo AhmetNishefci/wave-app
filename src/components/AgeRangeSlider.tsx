@@ -25,7 +25,7 @@ export function AgeRangeSlider({ min, max, onChangeEnd }: AgeRangeSliderProps) {
   const { t } = useTranslation();
   const trackWidth = useSharedValue(0);
 
-  // Position as fraction (0–1)
+  // Position as fraction (0-1)
   const minFrac = useSharedValue((min - MIN_AGE) / AGE_RANGE);
   const maxFrac = useSharedValue((max - MIN_AGE) / AGE_RANGE);
 

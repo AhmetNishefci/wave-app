@@ -19,7 +19,7 @@ export function getAgeFromDob(dob: string): number {
   return age;
 }
 
-/** Default age preference range: ±5 years from user's age, clamped to 18–80. */
+/** Default age preference range: ±5 years from user's age, clamped to 18-80. */
 export function getDefaultAgeRange(userAge: number): [number, number] {
   return [Math.max(18, userAge - 5), Math.min(80, userAge + 5)];
 }

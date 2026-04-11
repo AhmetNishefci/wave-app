@@ -99,7 +99,7 @@
     "invalidUsername": "Ungültiger Benutzername",
     "instagramInvalid": "Bitte gib einen gültigen Instagram-Namen ein (Buchstaben, Zahlen, Punkte und Unterstriche).",
     "snapchatTaken": "Dieser Snapchat-Name ist bereits mit einem anderen Wave-Konto verknüpft.",
-    "snapchatInvalid": "Bitte gib einen gültigen Snapchat-Namen ein (3–15 Zeichen, beginnt mit einem Buchstaben)."
+    "snapchatInvalid": "Bitte gib einen gültigen Snapchat-Namen ein (3-15 Zeichen, beginnt mit einem Buchstaben)."
   },
 
   "note": {
@@ -191,6 +191,7 @@
     "matchCount": "{{count}} Matches!",
     "loadingSocials": "Socials werden geladen...",
     "noSocials": "Keine Socials verknüpft",
+    "socialsLoadFailed": "Socials konnten gerade nicht geladen werden. Schau in deinen Matches nach.",
     "startDm": "Schreib deine erste Nachricht an",
     "copied": "Kopiert!",
     "tapToCopy": "Tippen zum Kopieren",
@@ -239,7 +240,6 @@
     "submitReport": "Meldung absenden",
     "reportConfirm": "Dieser Nutzer wurde gemeldet und blockiert.",
     "reportedAndBlocked": "Danke für die Meldung. Nutzer blockiert.",
-    "blocked": "Nutzer blockiert",
     "matchRemoved": "Match entfernt",
     "reportError": "Nutzer konnte nicht gemeldet werden. Versuch's nochmal.",
     "searchMatches": "Nach Nutzernamen suchen...",
@@ -267,7 +267,7 @@
     "nearbyAlertsHint": "Nutzt deinen Standort, wenn du Wave öffnest. Dein Standort wird nie mit anderen geteilt.",
     "dailyReminders": "Tägliche Erinnerungen",
     "eveningReminders": "Abend-Erinnerungen",
-    "eveningRemindersSubtitle": "Bekomme einen täglichen Reminder zur Primetime (18–20 Uhr)",
+    "eveningRemindersSubtitle": "Bekomme einen täglichen Reminder zur Primetime (18-20 Uhr)",
     "eveningRemindersHint": "Eine Benachrichtigung pro Tag, wenn Wave-Nutzer in deiner Nähe am aktivsten sind.",
     "socials": "Socials",
     "socialsHint": "Deine Socials werden deinem Match nach einem gegenseitigen Wave angezeigt.",
@@ -290,10 +290,10 @@
     "instagramInvalid": "Ungültiger Name. Verwende Buchstaben, Zahlen, Punkte und Unterstriche.",
     "snapchatUpdated": "Snapchat aktualisiert",
     "snapchatTaken": "Dieser Snapchat-Name ist bereits vergeben.",
-    "snapchatInvalid": "Ungültiger Snapchat-Name. 3–15 Zeichen, beginnt mit einem Buchstaben.",
+    "snapchatInvalid": "Ungültiger Snapchat-Name. 3-15 Zeichen, beginnt mit einem Buchstaben.",
     "nowShowing": "Zeige jetzt {{label}}",
     "preferenceError": "Einstellung konnte nicht aktualisiert werden. Versuch's nochmal.",
-    "ageRangeUpdated": "Altersbereich: {{min}}–{{max}}",
+    "ageRangeUpdated": "Altersbereich: {{min}}-{{max}}",
     "ageRangeError": "Altersbereich konnte nicht aktualisiert werden. Versuch's nochmal.",
     "locationNeeded": "Standortzugriff nötig",
     "locationDenied": "Standortzugriff wurde verweigert. Um Nähe-Benachrichtigungen zu aktivieren, öffne die Einstellungen und erlaube Wave den Standortzugriff.",
@@ -462,7 +462,7 @@
     "23": "Was steckt hinter deinem Benutzernamen?",
     "24": "Erzähl mir was, das dein Instagram nicht zeigt",
     "25": "Was ist deine beste Eigenschaft, die man im Profil nicht sieht?",
-    "26": "Auf einer Skala von 1–10, wie mutig war mein Wave?",
+    "26": "Auf einer Skala von 1-10, wie mutig war mein Wave?",
     "27": "Ich rate drei Dinge über dich — bereit?",
     "28": "Was hat dich dazu gebracht, Wave runterzuladen?",
     "29": "Erster Eindruck von mir basierend auf... absolut nichts 😂"

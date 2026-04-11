@@ -7,6 +7,7 @@ interface BleStatusBarProps {
   isScanning: boolean;
   isAdvertising: boolean;
   error: string | null;
+  tokenStale?: boolean;
 }
 
 export function BleStatusBar({
@@ -14,6 +15,7 @@ export function BleStatusBar({
   isScanning,
   isAdvertising,
   error,
+  tokenStale,
 }: BleStatusBarProps) {
   const { t } = useTranslation();
 
@@ -50,6 +52,16 @@ export function BleStatusBar({
       <View className="bg-wave-danger/20 rounded-xl px-4 py-2 mb-4">
         <Text className="text-wave-danger text-sm">
           {t("bleStatus.unsupported")}
+        </Text>
+      </View>
+    );
+  }
+
+  if (tokenStale) {
+    return (
+      <View className="bg-yellow-900/30 rounded-xl px-4 py-2 mb-4">
+        <Text className="text-yellow-400 text-sm">
+          {t("bleStatus.connectionIssue")}
         </Text>
       </View>
     );

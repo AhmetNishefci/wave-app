@@ -104,12 +104,12 @@ export function useEphemeralRotation() {
         } else {
           consecutiveFailures++;
 
-          // If failures exceed threshold, warn — the device is advertising
-          // an expired token (C5 fix)
+          // If failures exceed threshold, mark token as stale so the UI
+          // can show a warning. Auto-clears when setToken succeeds.
           if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            logger.error(
-              `Token rotation failed ${consecutiveFailures} consecutive times. ` +
-              "Device may be advertising an expired token.",
+            useTokenStore.getState().setTokenStale(true);
+            logger.warn(
+              `Token rotation failed ${consecutiveFailures} consecutive times — marked stale`,
             );
           }
         }

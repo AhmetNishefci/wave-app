@@ -184,6 +184,7 @@ export default function SettingsScreen() {
   const currentLang = LANGUAGES.find((l) => l.code === langCode) ?? LANGUAGES[0];
 
   const handleSaveHandle = async () => {
+    if (savingHandle) return;
     const trimmed = handleInput.trim().replace(/^@/, "");
     if (!trimmed) return;
 
@@ -205,6 +206,7 @@ export default function SettingsScreen() {
   };
 
   const handleSaveSnapchat = async () => {
+    if (savingSnapchat) return;
     const trimmed = snapchatInput.trim().replace(/^@/, "");
     if (!trimmed) return;
 

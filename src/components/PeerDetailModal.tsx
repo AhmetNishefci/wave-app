@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
@@ -17,10 +17,10 @@ import type { NearbyPeer } from "@/types";
 import { getDistanceZone, getSignalLabel, getAvatarForToken, getTimeSince } from "@/types";
 
 const REPORT_REASONS = [
-  { key: "harassment", labelKey: "history.reportReasonHarassment" },
-  { key: "inappropriate", labelKey: "history.reportReasonInappropriate" },
-  { key: "spam", labelKey: "history.reportReasonSpam" },
-  { key: "other", labelKey: "history.reportReasonOther" },
+  { key: "harassment", labelKey: "history.reportReasonHarassment", icon: "alert-circle-outline" as const },
+  { key: "inappropriate", labelKey: "history.reportReasonInappropriate", icon: "eye-off-outline" as const },
+  { key: "spam", labelKey: "history.reportReasonSpam", icon: "copy-outline" as const },
+  { key: "other", labelKey: "history.reportReasonOther", icon: "ellipsis-horizontal-outline" as const },
 ];
 
 export function PeerDetailModal({
@@ -46,6 +46,9 @@ export function PeerDetailModal({
   const snapchatHandle = matchedHandles?.snapchat;
 
   const [blocking, setBlocking] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [reportDetails, setReportDetails] = useState("");
 
   const applyBlock = (userId: string) => {
     useBleStore.getState().removeByUserId(userId);
@@ -80,41 +83,119 @@ export function PeerDetailModal({
     );
   };
 
-  const handleReport = () => {
-    if (!peer.userId) return;
-    Alert.alert(
-      t("history.reportUser"),
-      t("history.reportReasonPrompt"),
-      [
-        ...REPORT_REASONS.map((reason) => ({
-          text: t(reason.labelKey),
-          onPress: async () => {
-            setBlocking(true);
-            const result = await blockUser({
-              blockedId: peer.userId!,
-              displayName: peer.note ?? undefined,
-              reason: reason.key,
-            });
-            if (result.success) {
-              applyBlock(peer.userId!);
-              onClose();
-              setToast({
-                message: result.reportCreated
-                  ? t("history.reportedAndBlocked")
-                  : t("history.blocked"),
-              });
-              logger.wave("Peer reported from radar", { reason: reason.key });
-            } else {
-              setBlocking(false);
-              Alert.alert(t("common.error"), t("history.reportError"));
-            }
-          },
-        })),
-        { text: t("common.cancel"), style: "cancel" },
-      ],
-    );
+  const handleSubmitReport = async () => {
+    if (!peer.userId || !selectedReason) return;
+    setBlocking(true);
+    const result = await blockUser({
+      blockedId: peer.userId,
+      displayName: peer.note ?? undefined,
+      reason: selectedReason,
+      details: reportDetails.trim() || undefined,
+    });
+    if (result.success) {
+      applyBlock(peer.userId);
+      onClose();
+      setToast({
+        message: result.reportCreated
+          ? t("history.reportedAndBlocked")
+          : t("history.blocked"),
+      });
+      logger.wave("Peer reported from radar", { reason: selectedReason });
+    } else {
+      setBlocking(false);
+      Alert.alert(t("common.error"), t("history.reportError"));
+    }
   };
 
+  // Report flow UI (replaces the default peer detail view)
+  if (showReport) {
+    return (
+      <BottomSheet visible onClose={() => { setShowReport(false); setSelectedReason(null); setReportDetails(""); }}>
+        <View className="items-center mb-4">
+          <Ionicons name="flag-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
+          <Text className="text-white text-lg font-semibold">
+            {t("history.reportTitle", { name: peer.note || t("peerDetail.someone") })}
+          </Text>
+          <Text className="text-wave-muted text-sm mt-2 text-center px-4">
+            {t("history.reportReasonPrompt")}
+          </Text>
+        </View>
+
+        {/* Reason picker */}
+        <View style={{ gap: 6 }} className="mb-4">
+          {REPORT_REASONS.map((reason) => {
+            const isSelected = selectedReason === reason.key;
+            return (
+              <TouchableOpacity
+                key={reason.key}
+                onPress={() => setSelectedReason(reason.key)}
+                className={`rounded-xl py-3 px-4 flex-row items-center border ${
+                  isSelected ? "bg-wave-primary/15 border-wave-primary/30" : "bg-wave-bg border-transparent"
+                }`}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={reason.icon}
+                  size={20}
+                  color={isSelected ? COLORS.primary : COLORS.text}
+                  style={{ marginRight: 12 }}
+                />
+                <Text className={`text-sm font-semibold flex-1 ${isSelected ? "text-white" : "text-wave-muted"}`}>
+                  {t(reason.labelKey)}
+                </Text>
+                {isSelected && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Optional details */}
+        {selectedReason && (
+          <View className="bg-wave-bg rounded-xl px-4 mb-4" style={{ height: 80 }}>
+            <TextInput
+              value={reportDetails}
+              onChangeText={setReportDetails}
+              placeholder={t("history.reportDetailsPlaceholder")}
+              placeholderTextColor={COLORS.placeholder}
+              multiline
+              className="flex-1 text-white text-sm"
+              style={{ paddingVertical: 12, textAlignVertical: "top" }}
+              maxLength={500}
+            />
+          </View>
+        )}
+
+        {/* Submit */}
+        <TouchableOpacity
+          onPress={handleSubmitReport}
+          disabled={!selectedReason || blocking}
+          className={`w-full rounded-2xl py-4 items-center justify-center mb-2 ${
+            selectedReason ? "bg-wave-primary" : "bg-wave-primary/30"
+          }`}
+          activeOpacity={0.8}
+        >
+          {blocking ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <Text className={`text-sm font-semibold ${selectedReason ? "text-white" : "text-wave-muted"}`}>
+              {t("history.submitReport")}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Cancel */}
+        <TouchableOpacity
+          onPress={() => { setShowReport(false); setSelectedReason(null); setReportDetails(""); }}
+          className="items-center py-2"
+          activeOpacity={0.7}
+        >
+          <Text className="text-wave-muted text-sm">{t("common.cancel")}</Text>
+        </TouchableOpacity>
+      </BottomSheet>
+    );
+  }
+
+  // Default peer detail view
   return (
     <BottomSheet visible onClose={onClose}>
       {/* Avatar + Note */}
@@ -188,19 +269,13 @@ export function PeerDetailModal({
       {peer.userId && !isMatched && (
         <View className="flex-row mb-3" style={{ gap: 8 }}>
           <TouchableOpacity
-            onPress={handleReport}
+            onPress={() => setShowReport(true)}
             disabled={blocking}
             className="flex-1 bg-wave-bg rounded-xl py-3 flex-row items-center justify-center"
             activeOpacity={0.7}
           >
-            {blocking ? (
-              <ActivityIndicator size="small" color={COLORS.muted} />
-            ) : (
-              <>
-                <Ionicons name="flag-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
-                <Text className="text-wave-muted text-sm">{t("history.reportUser")}</Text>
-              </>
-            )}
+            <Ionicons name="flag-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
+            <Text className="text-wave-muted text-sm">{t("history.reportUser")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleBlock}

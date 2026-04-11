@@ -191,6 +191,7 @@
     "matchCount": "{{count}} matches!",
     "loadingSocials": "Loading socials...",
     "noSocials": "No socials linked",
+    "socialsLoadFailed": "Couldn't load socials right now. Check your matches to find them.",
     "startDm": "Start your DM with",
     "copied": "Copied!",
     "tapToCopy": "Tap to copy",
@@ -396,7 +397,8 @@
     "unauthorized": "Bluetooth permission denied. Open Settings to allow access.",
     "unsupported": "This device does not support Bluetooth Low Energy.",
     "scanning": "Scanning",
-    "broadcasting": "Broadcasting"
+    "broadcasting": "Broadcasting",
+    "connectionIssue": "Connection issue — retrying automatically..."
   },
 
   "shareCard": {

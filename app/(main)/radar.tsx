@@ -58,7 +58,7 @@ function LiveDot() {
 export default function RadarScreen() {
   const { t } = useTranslation();
   const { adapterState, isScanning, isAdvertising, error } = useBleStore();
-  const { currentToken } = useTokenStore();
+  const { currentToken, tokenStale } = useTokenStore();
   const { isConnected } = useNetworkStatus();
 
   const [showAllPeers, setShowAllPeers] = useState(false);
@@ -158,6 +158,7 @@ export default function RadarScreen() {
         isScanning={isScanning}
         isAdvertising={isAdvertising}
         error={error}
+        tokenStale={tokenStale}
       />
 
       {/* Offline banner */}

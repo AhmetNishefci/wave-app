@@ -68,6 +68,7 @@ export default function OnboardingScreen() {
         return;
       }
       igSaved = result.handle;
+      useAuthStore.getState().setInstagramHandle(igSaved);
     }
 
     if (trimmedSc) {
@@ -83,13 +84,11 @@ export default function OnboardingScreen() {
         return;
       }
       scSaved = result.handle;
+      useAuthStore.getState().setSnapchatHandle(scSaved);
     }
 
     setSaving(false);
     savingRef.current = false;
-
-    if (igSaved) useAuthStore.getState().setInstagramHandle(igSaved);
-    if (scSaved) useAuthStore.getState().setSnapchatHandle(scSaved);
     router.replace("/note");
   };
 

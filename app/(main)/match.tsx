@@ -264,7 +264,7 @@ export default function MatchScreen() {
           <Text className="text-wave-muted text-sm ml-2">{t("match.loadingSocials")}</Text>
         </View>
       ) : (
-        <Text className="text-wave-muted text-sm mb-6">{t("match.noSocials")}</Text>
+        <Text className="text-wave-muted text-sm mb-6 text-center px-4">{t("match.socialsLoadFailed")}</Text>
       )}
 
       {/* Ice-breaker — tap to copy conversation starter */}

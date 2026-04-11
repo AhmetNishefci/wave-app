@@ -151,19 +151,32 @@ export const useMatchStore = create<MatchState>()(
           const next = new Map(state.matchesById);
           next.delete(matchId);
 
-          // Clean up ALL matchedTokens for this user so peer reverts to "Wave" on radar
+          // Clean up ALL matchedTokens for this user so peer reverts to "Wave" on radar.
+          // Check both nearbyPeers (active) and pendingWaveUserMap (may reference
+          // pruned peers) to avoid orphaned handles in memory.
           let nextTokens = state.matchedTokens;
           let nextHandles = state.matchedHandles;
           if (removed) {
+            const tokensToRemove = new Set<string>();
+
+            // Source 1: active nearby peers
             const peers = useBleStore.getState().nearbyPeers;
-            let cloned = false;
             for (const [token, peer] of peers) {
               if (peer.userId === removed.matchedUserId && state.matchedTokens.has(token)) {
-                if (!cloned) {
-                  nextTokens = new Set(state.matchedTokens);
-                  nextHandles = new Map(state.matchedHandles);
-                  cloned = true;
-                }
+                tokensToRemove.add(token);
+              }
+            }
+
+            // Source 2: pendingWaveUserMap (covers pruned peers)
+            const pendingToken = state.pendingWaveUserMap.get(removed.matchedUserId);
+            if (pendingToken && state.matchedTokens.has(pendingToken)) {
+              tokensToRemove.add(pendingToken);
+            }
+
+            if (tokensToRemove.size > 0) {
+              nextTokens = new Set(state.matchedTokens);
+              nextHandles = new Map(state.matchedHandles);
+              for (const token of tokensToRemove) {
                 nextTokens.delete(token);
                 nextHandles.delete(token);
               }

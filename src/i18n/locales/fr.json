@@ -396,7 +396,8 @@
     "unauthorized": "Autorisation Bluetooth refusée. Ouvre les réglages pour autoriser l'accès.",
     "unsupported": "Cet appareil ne supporte pas le Bluetooth Low Energy.",
     "scanning": "Scan en cours",
-    "broadcasting": "Diffusion"
+    "broadcasting": "Diffusion",
+    "connectionIssue": "Problème de connexion — nouvelle tentative automatique..."
   },
 
   "shareCard": {

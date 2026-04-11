@@ -396,7 +396,8 @@
     "unauthorized": "Bluetooth-Berechtigung verweigert. Öffne die Einstellungen, um den Zugriff zu erlauben.",
     "unsupported": "Dieses Gerät unterstützt kein Bluetooth Low Energy.",
     "scanning": "Scanne",
-    "broadcasting": "Sende"
+    "broadcasting": "Sende",
+    "connectionIssue": "Verbindungsproblem — wird automatisch erneut versucht..."
   },
 
   "shareCard": {

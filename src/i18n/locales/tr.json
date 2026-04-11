@@ -396,7 +396,8 @@
     "unauthorized": "Bluetooth izni reddedildi. Erişime izin vermek için Ayarlar'ı aç.",
     "unsupported": "Bu cihaz Bluetooth Low Energy desteklemiyor.",
     "scanning": "Taranıyor",
-    "broadcasting": "Yayın yapılıyor"
+    "broadcasting": "Yayın yapılıyor",
+    "connectionIssue": "Bağlantı sorunu — otomatik olarak yeniden deneniyor..."
   },
 
   "shareCard": {

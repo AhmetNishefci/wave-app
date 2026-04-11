@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 import { removeMatchSchema, parseBody } from "../_shared/validation.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -13,6 +14,8 @@ serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
 
   try {
+    const log = createLogger("remove-match");
+
     // Authenticate
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -43,6 +46,8 @@ serve(async (req: Request) => {
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    log.setUserId(user.id);
 
     // Parse and validate request body with Zod
     let match_id: string;
@@ -76,7 +81,7 @@ serve(async (req: Request) => {
     });
 
     if (rpcError) {
-      console.error("RPC error:", rpcError);
+      log.error("RPC error", { error: rpcError.message });
       return new Response(JSON.stringify({ error: "Failed to remove match" }), {
         status: 500,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -103,7 +108,7 @@ serve(async (req: Request) => {
         });
         adminClient.removeChannel(ch);
       } catch (err) {
-        console.warn("match_removed broadcast failed (non-fatal):", err);
+        log.warn("match_removed broadcast failed", { error: String(err) });
         // Non-fatal — their local store will just have a stale entry
       }
     }
@@ -113,7 +118,7 @@ serve(async (req: Request) => {
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

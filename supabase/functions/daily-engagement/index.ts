@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -172,6 +173,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("daily-engagement");
+
   try {
     // Auth check: only accept service_role JWT (cron sends it via vault).
     // Decodes the JWT payload to check the role claim instead of comparing
@@ -211,7 +214,7 @@ serve(async (req: Request) => {
     );
 
     if (queryError) {
-      console.error("Failed to query eligible users:", queryError);
+      log.error("Failed to query eligible users", { error: queryError.message });
       return new Response(
         JSON.stringify({ error: "Query failed", detail: queryError.message }),
         {
@@ -239,7 +242,7 @@ serve(async (req: Request) => {
     }
 
     if (users.length === 0) {
-      console.log("No eligible users for engagement push this hour");
+      log.info("No eligible users this hour");
       return new Response(
         JSON.stringify({ status: "ok", eligible: 0, sent: 0 }),
         {
@@ -249,7 +252,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Found ${users.length} eligible users for engagement push`);
+    log.info("Found eligible users", { count: users.length });
 
     // Step 2: Build messages with contextual content
     const messages: {
@@ -324,13 +327,10 @@ serve(async (req: Request) => {
             }
           }
         } else {
-          console.error(
-            `Expo Push API error (${pushResponse.status}):`,
-            await pushResponse.text(),
-          );
+          log.error("Expo Push API error", { status: pushResponse.status });
         }
       } catch (pushErr) {
-        console.error("Push send error:", pushErr);
+        log.error("Push send error", { error: String(pushErr) });
       }
     }
 
@@ -341,7 +341,7 @@ serve(async (req: Request) => {
         .insert(sentRecords);
 
       if (insertError) {
-        console.warn("Failed to record engagement sends (non-fatal):", insertError);
+        log.warn("Failed to record engagement sends", { error: String(insertError) });
       }
     }
 
@@ -352,7 +352,7 @@ serve(async (req: Request) => {
         .delete()
         .in("token", invalidTokens);
 
-      console.log(`Cleaned up ${invalidTokens.length} invalid push tokens`);
+      log.info("Cleaned up invalid push tokens", { count: invalidTokens.length });
     }
 
     // Store receipt IDs for deferred checking (cleanup cron verifies ~1 hour later)
@@ -362,16 +362,13 @@ serve(async (req: Request) => {
         .insert(receiptRecords);
 
       if (receiptError) {
-        console.error("Failed to store push receipts:", receiptError);
+        log.error("Failed to store push receipts", { error: receiptError.message });
       } else {
-        console.log(`Stored ${receiptRecords.length} push receipt IDs for deferred checking`);
+        log.info("Stored push receipts", { count: receiptRecords.length });
       }
     }
 
-    const elapsed = Date.now() - startTime;
-    console.log(
-      `Engagement push complete: ${sentRecords.length}/${users.length} sent in ${elapsed}ms`,
-    );
+    log.result(200, { eligible: users.length, sent: sentRecords.length, invalid_tokens: invalidTokens.length, elapsed_ms: Date.now() - startTime });
 
     return new Response(
       JSON.stringify({
@@ -387,7 +384,7 @@ serve(async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

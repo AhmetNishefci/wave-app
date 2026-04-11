@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, FlatList, Modal, Pressable,
+  Alert, KeyboardAvoidingView, Platform, FlatList, Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,8 +58,6 @@ export default function PhoneLoginScreen() {
   const OTP_LOCKOUT_MS = 30_000;
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [otpLockedUntil, setOtpLockedUntil] = useState(0);
-  const isOtpLocked = Date.now() < otpLockedUntil;
-
   // Refs
   const otpInputRef = useRef<TextInput>(null);
   const phoneInputRef = useRef<TextInput>(null);

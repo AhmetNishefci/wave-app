@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 // Module-level singleton to reuse across warm invocations
 const adminClient = createClient(
@@ -14,6 +15,8 @@ serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
 
   try {
+    const log = createLogger("assign-ephemeral-id");
+
     // Create Supabase client with the user's JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -46,7 +49,31 @@ serve(async (req: Request) => {
       });
     }
 
+    log.setUserId(user.id);
     const userId = user.id;
+
+    // Rate limit: max 1 token per 5 seconds per user
+    const { data: recentToken } = await adminClient
+      .from("ephemeral_ids")
+      .select("created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentToken?.created_at) {
+      const elapsed = Date.now() - new Date(recentToken.created_at).getTime();
+      if (elapsed < 5_000) {
+        log.warn("Rate limited", { elapsed_ms: elapsed });
+        return new Response(
+          JSON.stringify({ error: "Rate limited", retry_after_ms: 5_000 - elapsed }),
+          {
+            status: 429,
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
 
     // Ensure profile exists (handles case where trigger hasn't fired)
     const { data: profileData, error: profileError } = await adminClient
@@ -62,7 +89,7 @@ serve(async (req: Request) => {
       .single();
 
     if (profileError) {
-      console.error("Failed to ensure profile:", profileError);
+      log.error("Failed to ensure profile", { error: profileError.message });
       return new Response(
         JSON.stringify({ error: "Failed to ensure profile", details: profileError.message }),
         {
@@ -108,7 +135,7 @@ serve(async (req: Request) => {
 
     if (firstError) {
       // Retry: deactivate any token the concurrent request may have created, then insert again
-      console.warn("Ephemeral ID insert conflict, retrying:", firstError.message);
+      log.warn("Ephemeral ID insert conflict, retrying", { error: firstError.message });
       await adminClient
         .from("ephemeral_ids")
         .update({ is_active: false })
@@ -122,7 +149,7 @@ serve(async (req: Request) => {
         .single();
 
       if (retryError) {
-        console.error("Failed to insert ephemeral ID after retry:", retryError);
+        log.error("Failed to insert ephemeral ID after retry", { error: retryError.message });
         return new Response(
           JSON.stringify({ error: "Failed to generate token" }),
           {
@@ -148,6 +175,7 @@ serve(async (req: Request) => {
       }
     }
 
+    log.result(200);
     return new Response(
       JSON.stringify({
         token: data.token,
@@ -162,7 +190,7 @@ serve(async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

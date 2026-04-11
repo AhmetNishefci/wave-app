@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 // Module-level singleton to reuse across warm invocations
 const adminClient = createClient(
@@ -13,6 +14,8 @@ serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
 
   try {
+    const log = createLogger("delete-account");
+
     // Authenticate the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -44,13 +47,15 @@ serve(async (req: Request) => {
       });
     }
 
+    log.setUserId(user.id);
+
     // CASCADE deletes will clean up profiles, ephemeral_ids, waves, matches, push_tokens
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(
       user.id,
     );
 
     if (deleteError) {
-      console.error("Failed to delete user:", deleteError);
+      log.error("Failed to delete user", { error: deleteError.message });
       return new Response(
         JSON.stringify({ error: "Failed to delete account" }),
         {
@@ -60,7 +65,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`User ${user.id} deleted successfully`);
+    log.result(200);
 
     return new Response(
       JSON.stringify({ status: "deleted" }),
@@ -70,7 +75,7 @@ serve(async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

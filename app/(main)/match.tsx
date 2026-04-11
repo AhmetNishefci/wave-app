@@ -355,7 +355,7 @@ function IcebreakerPrompt({ matchId }: { matchId: string }) {
         {t("match.startDm")}
       </Text>
       <Text className="text-white text-base leading-6 mb-3">
-        "{prompt}"
+        &ldquo;{prompt}&rdquo;
       </Text>
       <View className="flex-row items-center">
         <Ionicons

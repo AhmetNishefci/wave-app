@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 import { blockUserSchema, parseBody } from "../_shared/validation.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -11,6 +12,7 @@ const adminClient = createClient(
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "support@wavenearby.com";
 const REPORT_THRESHOLD = 3;
+const log = createLogger("block-user");
 
 /**
  * Block User Edge Function
@@ -63,6 +65,8 @@ serve(async (req: Request) => {
       });
     }
 
+    log.setUserId(user.id);
+
     // Parse and validate request body with Zod
     let blocked_id: string;
     let display_name: string | null | undefined;
@@ -112,7 +116,7 @@ serve(async (req: Request) => {
       );
 
     if (blockError) {
-      console.error("Failed to create block:", blockError);
+      log.error("Failed to create block", { error: blockError.message });
       return new Response(JSON.stringify({ error: "Failed to block user" }), {
         status: 500,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -135,7 +139,7 @@ serve(async (req: Request) => {
         );
 
       if (reportError) {
-        console.warn("Failed to create report (non-fatal):", reportError);
+        log.warn("Failed to create report", { error: reportError.message });
         // Non-fatal — block was created, report failed
       } else {
         reportCreated = true;
@@ -147,7 +151,7 @@ serve(async (req: Request) => {
       try {
         await sendReportEmails(user, blocked_id, reason!, details ?? null);
       } catch (err) {
-        console.warn("Report email error (non-fatal):", err);
+        log.warn("Report email error", { error: String(err) });
       }
     }
 
@@ -196,11 +200,11 @@ serve(async (req: Request) => {
         });
         adminClient.removeChannel(ch);
       } catch (err) {
-        console.warn("match_removed broadcast failed (non-fatal):", err);
+        log.warn("match_removed broadcast failed", { error: String(err) });
       }
     }
 
-    console.log(`User ${user.id} blocked ${blocked_id}${reason ? ` (reported: ${reason})` : ""}`);
+    log.result(200, { blocked_id, reported: !!reason, match_removed: !!match_id });
 
     return new Response(
       JSON.stringify({
@@ -214,7 +218,7 @@ serve(async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -258,7 +262,7 @@ async function sendReportEmails(
   details: string | null,
 ): Promise<void> {
   if (!RESEND_API_KEY) {
-    console.warn("RESEND_API_KEY not set — skipping report emails");
+    log.warn("RESEND_API_KEY not set, skipping report emails");
     return;
   }
 
@@ -351,7 +355,7 @@ async function sendEmail(
 
   if (!res.ok) {
     const body = await res.text();
-    console.error(`Resend API error (${res.status}):`, body);
+    log.error("Resend API error", { status: res.status, body });
   }
 }
 

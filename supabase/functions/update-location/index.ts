@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 import { updateLocationSchema, parseBody } from "../_shared/validation.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -38,6 +39,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("update-location");
+
   try {
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -69,6 +72,8 @@ serve(async (req: Request) => {
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    log.setUserId(user.id);
 
     // Parse and validate request body with Zod
     let latitude: number;
@@ -130,7 +135,7 @@ serve(async (req: Request) => {
       .eq("id", userId);
 
     if (updateError) {
-      console.error("Failed to update location:", updateError);
+      log.error("Failed to update location", { error: updateError.message });
       return new Response(
         JSON.stringify({ error: "Failed to update location" }),
         {
@@ -153,7 +158,7 @@ serve(async (req: Request) => {
     );
 
     if (queryError) {
-      console.warn("find_nearby_users error (non-fatal):", queryError);
+      log.warn("find_nearby_users error", { error: queryError.message });
       // Non-fatal: location was saved, just can't notify
       return new Response(
         JSON.stringify({ status: "ok", nearby_count: 0, notified_count: 0 }),
@@ -244,10 +249,10 @@ serve(async (req: Request) => {
             }
           }
         } else {
-          console.error("Expo Push API error:", pushResponse.status);
+          log.error("Expo Push API error", { status: pushResponse.status });
         }
       } catch (pushErr) {
-        console.error("Push send error:", pushErr);
+        log.error("Push send error", { error: String(pushErr) });
       }
     }
 
@@ -264,7 +269,7 @@ serve(async (req: Request) => {
         .insert(notifRecords);
 
       if (insertError) {
-        console.warn("Failed to record notifications (non-fatal):", insertError);
+        log.warn("Failed to record notifications", { error: insertError.message });
         // Non-fatal
       }
     }
@@ -276,14 +281,12 @@ serve(async (req: Request) => {
         .delete()
         .in("token", invalidTokens);
 
-      console.log(`Cleaned up ${invalidTokens.length} invalid push tokens`);
+      log.info("Cleaned up invalid push tokens", { count: invalidTokens.length });
     }
 
     const notifiedCount = notifiedUserIds.length;
 
-    console.log(
-      `Location updated for ${userId}. Nearby: ${nearbyCount}, Notified: ${notifiedCount}`,
-    );
+    log.result(200, { nearby_count: nearbyCount, notified_count: notifiedCount });
 
     return new Response(
       JSON.stringify({
@@ -297,7 +300,7 @@ serve(async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

@@ -97,10 +97,10 @@ function generatePeers(): NearbyPeer[] {
       gender: genders[i % genders.length],
       age: ages[i % ages.length],
       note: NAMES[i],
-      userId: PEER_USER_IDS[i] ?? null,
-      genderPreference: i % 3 === 0 ? "both" : i % 3 === 1 ? "male" : "female",
+      userId: PEER_USER_IDS[i] ?? `fake-user-${String(idx).padStart(3, "0")}`,
+      genderPreference: "both",
       agePreferenceMin: 18,
-      agePreferenceMax: 40,
+      agePreferenceMax: 80,
     });
   }
 
@@ -141,8 +141,6 @@ export function seedFakePeers(): void {
   waveStore.addIncomingWaveToken(fakePeers[18].ephemeralToken); // CLOSE zone
   waveStore.addIncomingWaveToken(fakePeers[25].ephemeralToken); // CLOSE zone
   waveStore.addPendingWave(fakePeers[4].ephemeralToken);
-  useMatchStore.getState().addMatchedToken(fakePeers[8].ephemeralToken, { instagram: "emma.w" });
-  useMatchStore.getState().addMatchedToken(fakePeers[12].ephemeralToken, { instagram: "jake_adventures", snapchat: "jake_snap" });
 }
 
 /**

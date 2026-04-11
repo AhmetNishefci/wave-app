@@ -16,6 +16,8 @@ import { unsubscribeFromMatches } from "@/services/wave/realtime";
 import { clearOfflineQueue } from "@/services/wave/waves";
 import { resetTimezoneSyncCache } from "@/services/profile";
 import { resetLocationCache } from "@/services/location";
+import { logger } from "@/utils/logger";
+import { setLastAuthProvider, addKnownProvider, getLinkedIdentities } from "@/services/authLinking";
 
 // Lazy-load to match the pattern in useNotifications (may not be available in Expo Go)
 let unregisterPushToken: (() => Promise<void>) | null = null;
@@ -25,8 +27,6 @@ try {
 } catch {
   // notifications service depends on expo-notifications native module
 }
-import { logger } from "@/utils/logger";
-import { setLastAuthProvider, addKnownProvider, getLinkedIdentities } from "@/services/authLinking";
 
 // Lazy-load expo-apple-authentication — may not be available on Android/Expo Go
 let AppleAuthentication: typeof import("expo-apple-authentication") | null = null;

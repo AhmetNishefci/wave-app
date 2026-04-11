@@ -528,7 +528,6 @@ export async function syncTimezoneAndActivity(): Promise<void> {
 
     if (!user) return;
 
-    const now = Date.now();
     const updates: Record<string, unknown> = {
       last_active_at: new Date().toISOString(),
     };

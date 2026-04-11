@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createLogger } from "../_shared/logger.ts";
 
 /**
  * Cleanup Edge Function
@@ -17,6 +18,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  */
 serve(async (req: Request) => {
   try {
+    const log = createLogger("cleanup");
+
     // Auth check: only accept service_role JWT (cron sends it via vault).
     const authHeader = req.headers.get("Authorization");
     const jwt = authHeader?.replace("Bearer ", "") ?? "";
@@ -42,7 +45,7 @@ serve(async (req: Request) => {
     const { error } = await adminClient.rpc("cleanup_expired_data");
 
     if (error) {
-      console.error("Cleanup failed:", error);
+      log.error("Cleanup failed", { error: error.message });
       return new Response(
         JSON.stringify({ status: "error", message: error.message }),
         { status: 500, headers: { "Content-Type": "application/json" } },
@@ -92,7 +95,7 @@ serve(async (req: Request) => {
               .delete()
               .in("token", tokensToDelete);
             invalidTokensCleaned = tokensToDelete.length;
-            console.log(`Receipt check: cleaned ${tokensToDelete.length} invalid tokens`);
+            log.info("Receipt check", { invalid_tokens: tokensToDelete.length });
           }
 
           receiptsChecked = pendingReceipts.length;
@@ -105,10 +108,10 @@ serve(async (req: Request) => {
           .in("receipt_id", receiptIds);
       }
     } catch (receiptErr) {
-      console.warn("Receipt check failed (non-fatal):", receiptErr);
+      log.warn("Receipt check failed", { error: String(receiptErr) });
     }
 
-    console.log("Cleanup completed successfully");
+    log.result(200);
     return new Response(
       JSON.stringify({
         status: "ok",
@@ -119,7 +122,7 @@ serve(async (req: Request) => {
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("Cleanup unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(
       JSON.stringify({ status: "error", message: "Internal error" }),
       { status: 500, headers: { "Content-Type": "application/json" } },

@@ -3,6 +3,7 @@ import type { WaveResult, Match } from "@/types";
 import { logger } from "@/utils/logger";
 import { getFreshSession } from "./session";
 import NetInfo from "@react-native-community/netinfo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WAVE_EXPIRY_MINUTES } from "@/services/ble/constants";
 
 /** Result returned by sendWave with optional match data */
@@ -17,13 +18,12 @@ export interface SendWaveResult {
 // when connectivity is restored. Queued waves expire after 15 min
 // (matching server-side wave lifetime).
 //
-// Intentionally in-memory only (not persisted to AsyncStorage):
-// - Waves expire server-side in 15 min, so persisting across app restarts
-//   would only create stale retry attempts
-// - The pendingWaves UI state in waveStore already shows the user their
-//   pending wave, and useBleLifecycle clears stale ones on foreground
+// Persisted to AsyncStorage so waves survive app kills (e.g. iOS
+// memory pressure in crowded venues). Expired entries are filtered
+// on load — only waves within the 15-min server-side lifetime retry.
 
 const WAVE_QUEUE_EXPIRY_MS = WAVE_EXPIRY_MINUTES * 60_000;
+const QUEUE_STORAGE_KEY = "@wave_offline_queue";
 
 interface QueuedWave {
   token: string;
@@ -32,6 +32,32 @@ interface QueuedWave {
 
 let offlineQueue: QueuedWave[] = [];
 let networkUnsubscribe: (() => void) | null = null;
+
+/** Persist the current queue to AsyncStorage (non-blocking, non-fatal). */
+function persistQueue(): void {
+  AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(offlineQueue)).catch(() => {});
+}
+
+/** Load persisted queue on module init. Discards expired entries. */
+(async function loadPersistedQueue(): Promise<void> {
+  try {
+    const stored = await AsyncStorage.getItem(QUEUE_STORAGE_KEY);
+    if (!stored) return;
+    const parsed: QueuedWave[] = JSON.parse(stored);
+    const now = Date.now();
+    const valid = parsed.filter((w) => now - w.queuedAt < WAVE_QUEUE_EXPIRY_MS);
+    if (valid.length > 0) {
+      offlineQueue = valid;
+      startNetworkListener();
+      logger.wave("Restored offline wave queue", { count: valid.length });
+    }
+    if (valid.length !== parsed.length) {
+      persistQueue();
+    }
+  } catch {
+    // Non-fatal — queue starts empty
+  }
+})();
 
 function startNetworkListener(): void {
   if (networkUnsubscribe) return;
@@ -56,6 +82,7 @@ function stopNetworkListenerIfEmpty(): void {
  */
 export function clearOfflineQueue(): void {
   offlineQueue = [];
+  persistQueue();
   stopNetworkListenerIfEmpty();
 }
 
@@ -66,6 +93,7 @@ async function flushOfflineQueue(): Promise<void> {
   // Filter out expired queued waves
   const valid = offlineQueue.filter((w) => now - w.queuedAt < WAVE_QUEUE_EXPIRY_MS);
   offlineQueue = [];
+  persistQueue();
 
   for (let i = 0; i < valid.length; i++) {
     const queued = valid[i];
@@ -114,6 +142,7 @@ export async function sendWave(
         // Dedup: don't queue the same token twice
         if (!offlineQueue.some((w) => w.token === targetEphemeralToken)) {
           offlineQueue.push({ token: targetEphemeralToken, queuedAt: Date.now() });
+          persistQueue();
         }
         startNetworkListener();
         return { status: "pending" };

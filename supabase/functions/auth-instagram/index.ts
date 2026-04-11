@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 import { authInstagramSchema, parseBody } from "../_shared/validation.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 const INSTAGRAM_APP_ID = Deno.env.get("INSTAGRAM_APP_ID") ?? "";
 const INSTAGRAM_APP_SECRET = Deno.env.get("INSTAGRAM_APP_SECRET") ?? "";
@@ -13,6 +14,8 @@ const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
+
+  const log = createLogger("auth-instagram");
 
   try {
     let rawBody: unknown;
@@ -49,7 +52,7 @@ serve(async (req: Request) => {
 
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
-      console.error("Instagram token exchange failed:", errBody);
+      log.error("Instagram token exchange failed", { body: errBody });
       return jsonResponse(
         { error: "Instagram token exchange failed" },
         401,
@@ -71,7 +74,7 @@ serve(async (req: Request) => {
 
     if (!profileRes.ok) {
       const errBody = await profileRes.text();
-      console.error("Instagram profile fetch failed:", errBody);
+      log.error("Instagram profile fetch failed", { body: errBody });
       return jsonResponse(
         { error: "Failed to fetch Instagram profile" },
         500,
@@ -85,16 +88,16 @@ serve(async (req: Request) => {
 
     // Validate Instagram user ID is numeric (expected format from Instagram API)
     if (!instagramUserId || !/^\d+$/.test(instagramUserId)) {
-      console.error("Invalid Instagram user ID:", instagramUserId);
+      log.error("Invalid Instagram user ID", { user_id: instagramUserId });
       return jsonResponse({ error: "Invalid Instagram user ID" }, 400, req);
     }
 
     if (!instagramHandle || typeof instagramHandle !== "string") {
-      console.error("Invalid Instagram username:", instagramHandle);
+      log.error("Invalid Instagram username", { handle: instagramHandle });
       return jsonResponse({ error: "Invalid Instagram profile" }, 400, req);
     }
 
-    console.log(`Instagram auth: @${instagramHandle} (ID: ${instagramUserId})`);
+    log.info("Instagram auth", { handle: instagramHandle, ig_user_id: instagramUserId });
 
     // ─── Step 3: Find or create Supabase user ────────────────────────
     // Use a deterministic email so the same Instagram account always maps
@@ -118,7 +121,7 @@ serve(async (req: Request) => {
         .update({ instagram_handle: instagramHandle })
         .eq("id", userId);
 
-      console.log(`Existing user found: ${userId}`);
+      log.info("Existing user found", { user_id: userId });
     } else {
       // New user — create Supabase auth user + profile
       const { data: newUser, error: createErr } =
@@ -156,18 +159,18 @@ serve(async (req: Request) => {
 
           if (profileById) {
             userId = profileById.id;
-            console.log(`Found user via profile fallback: ${userId}`);
+            log.info("User found via profile fallback", { user_id: userId });
           } else {
-            console.error("Failed to create user:", createErr);
+            log.error("Failed to create user", { error: String(createErr) });
             return jsonResponse({ error: "Failed to create account" }, 500, req);
           }
         } else {
           userId = existingAuthUser.id;
-          console.log(`Auth user existed without profile: ${userId}`);
+          log.info("Auth user existed without profile", { user_id: userId });
         }
       } else {
         userId = newUser.user.id;
-        console.log(`New user created: ${userId}`);
+        log.info("New user created", { user_id: userId });
       }
 
       // Ensure profile row exists with Instagram data
@@ -189,7 +192,7 @@ serve(async (req: Request) => {
       });
 
     if (linkErr || !linkData) {
-      console.error("Failed to generate magic link:", linkErr);
+      log.error("Failed to generate magic link", { error: String(linkErr) });
       return jsonResponse({ error: "Failed to generate session" }, 500, req);
     }
 
@@ -198,7 +201,7 @@ serve(async (req: Request) => {
       linkData.properties?.hashed_token ?? "";
 
     if (!otpToken) {
-      console.error("No hashed_token in generated link", linkData);
+      log.error("No hashed_token in generated link");
       return jsonResponse({ error: "Session generation failed" }, 500, req);
     }
 
@@ -209,7 +212,7 @@ serve(async (req: Request) => {
       instagram_user_id: instagramUserId,
     }, 200, req);
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return jsonResponse({ error: "Internal server error" }, 500, req);
   }
 });

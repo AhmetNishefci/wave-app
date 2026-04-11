@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 import { sendWaveSchema, parseBody } from "../_shared/validation.ts";
+import { createLogger, type Logger } from "../_shared/logger.ts";
 
 // Module-level singleton to reuse across warm invocations
 const adminClient = createClient(
@@ -72,6 +73,8 @@ serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
 
   try {
+    const log = createLogger("send-wave");
+
     // Authenticate the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -102,6 +105,8 @@ serve(async (req: Request) => {
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    log.setUserId(user.id);
 
     // Parse and validate request body with Zod (O7)
     let target_ephemeral_token: string;
@@ -169,7 +174,7 @@ serve(async (req: Request) => {
         .select();
 
       if (delError) {
-        console.error("Undo wave delete error:", delError);
+        log.error("Undo wave delete error", { error: delError.message });
         return new Response(JSON.stringify({ status: "error" }), {
           status: 500,
           headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -196,7 +201,7 @@ serve(async (req: Request) => {
             .or("is_active.eq.true,expires_at.gt.now()");
           waverTokens = (waverRows ?? []).map((r: { token: string }) => r.token);
         } catch (err) {
-          console.warn("Failed to look up waver tokens for undo (non-fatal):", err);
+          log.warn("Failed to look up waver tokens for undo", { error: String(err) });
         }
 
         try {
@@ -211,7 +216,7 @@ serve(async (req: Request) => {
           });
           adminClient.removeChannel(ch);
         } catch (err) {
-          console.warn("wave_undo broadcast failed (non-fatal):", err);
+          log.warn("wave_undo broadcast failed", { error: String(err) });
         }
       }
 
@@ -232,7 +237,7 @@ serve(async (req: Request) => {
     );
 
     if (rpcError) {
-      console.error("RPC error:", rpcError);
+      log.error("RPC error", { error: rpcError.message });
       return new Response(JSON.stringify({ error: "Match check failed" }), {
         status: 500,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -245,10 +250,21 @@ serve(async (req: Request) => {
       matched_user_id?: string;
       target_user_id?: string;
       reason?: string;
+      is_new_wave?: boolean;
     };
 
     // ─── PENDING WAVE → notify target anonymously ────────────────
     if (result.status === "pending") {
+      // Idempotency: if is_new_wave is false, this is a duplicate request
+      // (client retry). Skip push/broadcast to avoid double notifications.
+      if (result.is_new_wave === false) {
+        log.info("Duplicate wave, skipping notification", { target: result.target_user_id });
+        log.result(200, { status: "pending", duplicate: true });
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
       // Resolve target token → user_id so we can broadcast
       let targetUserId = result.target_user_id;
       if (!targetUserId) {
@@ -278,7 +294,7 @@ serve(async (req: Request) => {
           waverToken = waverRow?.token ?? null;
           waverNote = waverRow?.note ?? null;
         } catch (err) {
-          console.warn("Failed to look up waver token (non-fatal):", err);
+          log.warn("Failed to look up waver token", { error: String(err) });
         }
 
         // Check mutual preferences before notifying — suppress notification if
@@ -302,7 +318,7 @@ serve(async (req: Request) => {
         const shouldNotify = checkMutualPreferences(waverProfile, targetProfile);
 
         if (!shouldNotify) {
-          console.log(`Wave notification suppressed (preference mismatch): ${user.id} → ${targetUserId}`);
+          log.info("Wave notification suppressed", { reason: "preference_mismatch", target: targetUserId });
         }
 
         if (shouldNotify) {
@@ -315,7 +331,7 @@ serve(async (req: Request) => {
             });
             adminClient.removeChannel(ch);
           } catch (err) {
-            console.warn("Wave broadcast to target failed (non-fatal):", err);
+            log.warn("Wave broadcast to target failed", { error: String(err) });
           }
 
           const targetLocale = targetProfile?.locale ?? null;
@@ -329,7 +345,7 @@ serve(async (req: Request) => {
             title: getPushString(targetLocale, "waveTitle"),
             body: pushBody,
             data: { type: "wave", waver_token: waverToken },
-          });
+          }, log);
         }
       }
     }
@@ -394,7 +410,7 @@ serve(async (req: Request) => {
           matched_user_id: user.id,
           created_at: matchPayload.created_at,
         },
-      });
+      }, log);
 
       // Also push the waver (in case they backgrounded the app)
       await sendExpoPush(adminClient, user.id, {
@@ -406,7 +422,7 @@ serve(async (req: Request) => {
           matched_user_id: result.matched_user_id,
           created_at: matchPayload.created_at,
         },
-      });
+      }, log);
     }
 
     // ─── ALREADY MATCHED → return handles so client can re-populate ──
@@ -421,6 +437,8 @@ serve(async (req: Request) => {
       matchedSnapchatHandle = profile?.snapchat_handle ?? null;
     }
 
+    log.result(200, { status: result.status, match: !!result.match_id });
+
     return new Response(JSON.stringify({
       ...result,
       ...((result.status === "match" || result.status === "already_matched")
@@ -430,7 +448,7 @@ serve(async (req: Request) => {
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Unexpected error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -452,6 +470,7 @@ async function sendExpoPush(
     body: string;
     data?: Record<string, unknown>;
   },
+  log: Logger,
 ): Promise<void> {
   try {
     const { data: tokenRows } = await adminClient
@@ -460,7 +479,7 @@ async function sendExpoPush(
       .eq("user_id", targetUserId);
 
     if (!tokenRows || tokenRows.length === 0) {
-      console.log(`No push token for user ${targetUserId}, skipping push`);
+      log.info("No push token, skipping push", { target: targetUserId });
       return;
     }
 
@@ -487,10 +506,10 @@ async function sendExpoPush(
 
     if (!response.ok) {
       const body = await response.text();
-      console.error(`Expo push error (${response.status}):`, body);
+      log.error("Expo push error", { status: response.status, body });
     } else {
       const result = await response.json();
-      console.log(`Push sent to user ${targetUserId}:`, JSON.stringify(result));
+      log.info("Push sent", { target: targetUserId, tickets: result?.data?.length ?? 0 });
 
       // Clean up invalid push tokens (H15 fix)
       // Expo returns per-ticket errors for invalid/uninstalled devices
@@ -506,7 +525,7 @@ async function sendExpoPush(
         }
       }
       if (tokensToDelete.length > 0) {
-        console.log(`Cleaning up ${tokensToDelete.length} invalid push tokens`);
+        log.info("Cleaned up invalid push tokens", { count: tokensToDelete.length });
         await adminClient
           .from("push_tokens")
           .delete()
@@ -514,7 +533,7 @@ async function sendExpoPush(
       }
     }
   } catch (err) {
-    console.warn(`Push notification failed for ${targetUserId}:`, err);
+    log.warn("Push notification failed", { target: targetUserId, error: String(err) });
   }
 }
 

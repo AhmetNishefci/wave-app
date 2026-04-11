@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type RefObject } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { TextInput as RNTextInput } from "react-native";
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

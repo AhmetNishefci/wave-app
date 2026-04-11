@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
+import { createLogger } from "../_shared/logger.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "support@wavenearby.com";
@@ -10,6 +11,8 @@ serve(async (req: Request) => {
   if (preflightResponse) return preflightResponse;
 
   try {
+    const log = createLogger("send-support-email");
+
     // Authenticate the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -32,6 +35,8 @@ serve(async (req: Request) => {
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    log.setUserId(user.id);
 
     // Parse body
     let category: string;
@@ -156,7 +161,7 @@ serve(async (req: Request) => {
 
     if (!resendRes.ok) {
       const errBody = await resendRes.text();
-      console.error("Resend API error:", resendRes.status, errBody);
+      log.error("Resend API error", { status: resendRes.status, body: errBody });
       return new Response(JSON.stringify({ error: "Failed to send email" }), {
         status: 502,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -167,7 +172,7 @@ serve(async (req: Request) => {
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("send-support-email error:", err);
+    log.error("Unexpected error", { error: String(err) });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

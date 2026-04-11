@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { COLORS } from "@/constants/colors";
 
 export type ToastVariant = "success" | "error";
 
@@ -11,8 +12,6 @@ interface ToastProps {
   onDismiss: () => void;
   durationMs?: number;
 }
-
-import { COLORS } from "@/constants/colors";
 
 const variantStyles: Record<ToastVariant, { bg: string; borderColor: string }> = {
   success: { bg: "bg-green-900", borderColor: COLORS.toastSuccess },

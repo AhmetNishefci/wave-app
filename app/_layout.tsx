@@ -26,7 +26,7 @@ Sentry.init({
   // before our wrapper catches it — not actionable, just network noise.
   beforeSend(event) {
     const exType = event.exception?.values?.[0]?.type;
-    if (exType === "FunctionsFetchError") return null;
+    if (exType === "FunctionsFetchError" || exType === "AuthRetryableFetchError") return null;
     return event;
   },
 });

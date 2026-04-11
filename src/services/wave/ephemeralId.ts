@@ -41,7 +41,7 @@ export async function fetchNewToken(): Promise<TokenResponse | null> {
     }
   }
 
-  logger.error("All token fetch attempts failed");
+  logger.warn("All token fetch attempts failed (will retry on next rotation cycle)");
   return null;
 }
 

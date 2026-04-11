@@ -17,9 +17,8 @@ import { createLogger } from "../_shared/logger.ts";
  *   curl -X POST https://<project-ref>.supabase.co/functions/v1/cleanup
  */
 serve(async (req: Request) => {
+  const log = createLogger("cleanup");
   try {
-    const log = createLogger("cleanup");
-
     // Auth check: only accept service_role JWT (cron sends it via vault).
     const authHeader = req.headers.get("Authorization");
     const jwt = authHeader?.replace("Bearer ", "") ?? "";

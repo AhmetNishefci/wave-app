@@ -14,9 +14,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("assign-ephemeral-id");
   try {
-    const log = createLogger("assign-ephemeral-id");
-
     // Create Supabase client with the user's JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

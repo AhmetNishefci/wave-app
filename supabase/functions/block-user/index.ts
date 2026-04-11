@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightIfNeeded } from "../_shared/cors.ts";
 import { blockUserSchema, parseBody } from "../_shared/validation.ts";
-import { createLogger } from "../_shared/logger.ts";
+import { createLogger, type Logger } from "../_shared/logger.ts";
 
 const adminClient = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -12,7 +12,6 @@ const adminClient = createClient(
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") ?? "support@wavenearby.com";
 const REPORT_THRESHOLD = 3;
-const log = createLogger("block-user");
 
 /**
  * Block User Edge Function
@@ -37,6 +36,7 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("block-user");
   try {
     // Authenticate
     const authHeader = req.headers.get("Authorization");
@@ -149,7 +149,7 @@ serve(async (req: Request) => {
     // 2b. Send report notification emails (non-fatal)
     if (reportCreated) {
       try {
-        await sendReportEmails(user, blocked_id, reason!, details ?? null);
+        await sendReportEmails(user, blocked_id, reason!, details ?? null, log);
       } catch (err) {
         log.warn("Report email error", { error: String(err) });
       }
@@ -260,6 +260,7 @@ async function sendReportEmails(
   reportedId: string,
   reason: string,
   details: string | null,
+  log: Logger,
 ): Promise<void> {
   if (!RESEND_API_KEY) {
     log.warn("RESEND_API_KEY not set, skipping report emails");
@@ -297,6 +298,8 @@ async function sendReportEmails(
     SUPPORT_EMAIL,
     `[Wave Report] ${reasonLabel} — ${reporterLabel} reported ${reportedLabel}`,
     buildAdminReportHtml(reporter, reporterProfile, reportedId, reportedProfile, reasonLabel, details, reportCount),
+    undefined,
+    log,
   );
 
   // 2. Threshold alert (fires exactly once, at the threshold)
@@ -305,6 +308,8 @@ async function sendReportEmails(
       SUPPORT_EMAIL,
       `[Wave URGENT] ${reportedLabel} has ${reportCount} reports — action needed`,
       buildThresholdAlertHtml(reportedId, reportedProfile, reportCount),
+      undefined,
+      log,
     );
   }
 
@@ -317,6 +322,7 @@ async function sendReportEmails(
       "We received your report — Wave",
       buildReporterAckHtml(reasonLabel),
       SUPPORT_EMAIL, // reply-to support so user can reply
+      log,
     );
   }
 }
@@ -336,7 +342,8 @@ async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  replyTo?: string,
+  replyTo: string | undefined,
+  log: Logger,
 ): Promise<void> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

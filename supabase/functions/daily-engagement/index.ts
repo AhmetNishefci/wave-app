@@ -376,7 +376,7 @@ serve(async (req: Request) => {
         eligible: users.length,
         sent: sentRecords.length,
         invalid_tokens: invalidTokens.length,
-        elapsed_ms: elapsed,
+        elapsed_ms: Date.now() - startTime,
       }),
       {
         status: 200,

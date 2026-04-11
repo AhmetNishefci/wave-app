@@ -13,9 +13,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("remove-match");
   try {
-    const log = createLogger("remove-match");
-
     // Authenticate
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

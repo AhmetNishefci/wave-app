@@ -13,9 +13,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("delete-account");
   try {
-    const log = createLogger("delete-account");
-
     // Authenticate the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

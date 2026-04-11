@@ -10,9 +10,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("send-support-email");
   try {
-    const log = createLogger("send-support-email");
-
     // Authenticate the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

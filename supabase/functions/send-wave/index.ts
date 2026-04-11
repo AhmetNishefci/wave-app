@@ -72,9 +72,8 @@ serve(async (req: Request) => {
   const preflightResponse = handleCorsPreflightIfNeeded(req);
   if (preflightResponse) return preflightResponse;
 
+  const log = createLogger("send-wave");
   try {
-    const log = createLogger("send-wave");
-
     // Authenticate the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

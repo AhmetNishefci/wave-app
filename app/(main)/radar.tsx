@@ -271,7 +271,7 @@ export default function RadarScreen() {
 
       {/* Peer detail modal */}
       {selectedPeer && (
-        <PeerDetailModal peer={selectedPeer} onClose={() => setSelectedPeer(null)} />
+        <PeerDetailModal peer={selectedPeer} onClose={() => setSelectedPeer(null)} setToast={setToast} />
       )}
 
       <Toast message={toast?.message ?? null} variant={toast?.variant} onDismiss={() => setToast(null)} />

@@ -1,20 +1,36 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { openInstagramProfile, openSnapchatProfile } from "@/utils/deepLink";
 import { useMatchStore } from "@/stores/matchStore";
+import { useBleStore } from "@/stores/bleStore";
 import { BottomSheet } from "@/components/BottomSheet";
 import { SocialActionRow } from "@/components/SocialActionRow";
 import { ZONE_CONFIG } from "@/constants/zones";
+import { COLORS } from "@/constants/colors";
+import { blockUser } from "@/services/wave/waves";
+import { clearWaveStateForUser } from "@/utils/waveCleanup";
+import { logger } from "@/utils/logger";
 import type { NearbyPeer } from "@/types";
 import { getDistanceZone, getSignalLabel, getAvatarForToken, getTimeSince } from "@/types";
+
+const REPORT_REASONS = [
+  { key: "harassment", labelKey: "history.reportReasonHarassment" },
+  { key: "inappropriate", labelKey: "history.reportReasonInappropriate" },
+  { key: "spam", labelKey: "history.reportReasonSpam" },
+  { key: "other", labelKey: "history.reportReasonOther" },
+];
 
 export function PeerDetailModal({
   peer,
   onClose,
+  setToast,
 }: {
   peer: NearbyPeer;
   onClose: () => void;
+  setToast: (toast: { message: string; variant?: "success" | "error" } | null) => void;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -28,6 +44,76 @@ export function PeerDetailModal({
   const matchedHandles = useMatchStore((s) => s.matchedHandles.get(peer.ephemeralToken));
   const instagramHandle = matchedHandles?.instagram;
   const snapchatHandle = matchedHandles?.snapchat;
+
+  const [blocking, setBlocking] = useState(false);
+
+  const applyBlock = (userId: string) => {
+    useBleStore.getState().removeByUserId(userId);
+    useBleStore.getState().addBlockedUserId(userId);
+    clearWaveStateForUser(userId);
+  };
+
+  const handleBlock = () => {
+    if (!peer.userId) return;
+    Alert.alert(
+      t("history.blockUser"),
+      t("history.blockConfirm", { name: peer.note || t("peerDetail.someone") }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("history.blockUser"),
+          style: "destructive",
+          onPress: async () => {
+            setBlocking(true);
+            const result = await blockUser({ blockedId: peer.userId! });
+            if (result.success) {
+              applyBlock(peer.userId!);
+              onClose();
+              setToast({ message: t("history.blocked") });
+            } else {
+              setBlocking(false);
+              Alert.alert(t("common.error"), t("history.blockError"));
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleReport = () => {
+    if (!peer.userId) return;
+    Alert.alert(
+      t("history.reportUser"),
+      t("history.reportReasonPrompt"),
+      [
+        ...REPORT_REASONS.map((reason) => ({
+          text: t(reason.labelKey),
+          onPress: async () => {
+            setBlocking(true);
+            const result = await blockUser({
+              blockedId: peer.userId!,
+              displayName: peer.note ?? undefined,
+              reason: reason.key,
+            });
+            if (result.success) {
+              applyBlock(peer.userId!);
+              onClose();
+              setToast({
+                message: result.reportCreated
+                  ? t("history.reportedAndBlocked")
+                  : t("history.blocked"),
+              });
+              logger.wave("Peer reported from radar", { reason: reason.key });
+            } else {
+              setBlocking(false);
+              Alert.alert(t("common.error"), t("history.reportError"));
+            }
+          },
+        })),
+        { text: t("common.cancel"), style: "cancel" },
+      ],
+    );
+  };
 
   return (
     <BottomSheet visible onClose={onClose}>
@@ -96,6 +182,36 @@ export function PeerDetailModal({
         >
           <Text className="text-white text-sm font-semibold">{t("peerDetail.viewAllMatches")}</Text>
         </TouchableOpacity>
+      )}
+
+      {/* Block & Report (when userId is resolved and not already matched) */}
+      {peer.userId && !isMatched && (
+        <View className="flex-row mb-3" style={{ gap: 8 }}>
+          <TouchableOpacity
+            onPress={handleReport}
+            disabled={blocking}
+            className="flex-1 bg-wave-bg rounded-xl py-3 flex-row items-center justify-center"
+            activeOpacity={0.7}
+          >
+            {blocking ? (
+              <ActivityIndicator size="small" color={COLORS.muted} />
+            ) : (
+              <>
+                <Ionicons name="flag-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
+                <Text className="text-wave-muted text-sm">{t("history.reportUser")}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleBlock}
+            disabled={blocking}
+            className="flex-1 bg-wave-bg rounded-xl py-3 flex-row items-center justify-center"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ban-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
+            <Text className="text-wave-muted text-sm">{t("history.blockUser")}</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Close */}

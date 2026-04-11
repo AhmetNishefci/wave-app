@@ -70,6 +70,7 @@ export default function RootLayout() {
           {/* Disable back gesture on onboarding screens (H2 fix) */}
           <Stack.Screen name="login" options={{ gestureEnabled: false }} />
           <Stack.Screen name="phone-login" options={{ gestureEnabled: true }} />
+          <Stack.Screen name="terms-acceptance" options={{ gestureEnabled: false }} />
           <Stack.Screen name="birthday" options={{ gestureEnabled: false }} />
           <Stack.Screen name="age-blocked" options={{ gestureEnabled: false }} />
           <Stack.Screen name="gender" options={{ gestureEnabled: false }} />

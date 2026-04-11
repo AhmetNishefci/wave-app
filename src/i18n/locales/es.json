@@ -470,5 +470,13 @@
     "radar": "Radar",
     "matches": "Matches",
     "settings": "Ajustes"
+  },
+  "terms": {
+    "title": "Términos y privacidad",
+    "subtitle": "Revisa y acepta nuestros términos de servicio y política de privacidad antes de continuar.",
+    "termsLink": "Términos de servicio",
+    "privacyLink": "Política de privacidad",
+    "agreeCheckbox": "Acepto los términos de servicio y la política de privacidad",
+    "continue": "Continuar"
   }
 }

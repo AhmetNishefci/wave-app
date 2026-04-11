@@ -38,6 +38,7 @@ export interface UserProfile {
   nearbyAlertsEnabled: boolean;
   nearbyAlertsOnboarded: boolean;
   dailyPushesEnabled: boolean;
+  termsAcceptedAt: string | null;
 }
 
 /**
@@ -56,7 +57,7 @@ export async function fetchProfile(): Promise<UserProfile | null> {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("date_of_birth, instagram_handle, snapchat_handle, gender, gender_preference, age_preference_min, age_preference_max, note, nearby_alerts_enabled, nearby_alerts_onboarded, daily_pushes_enabled")
+      .select("date_of_birth, instagram_handle, snapchat_handle, gender, gender_preference, age_preference_min, age_preference_max, note, nearby_alerts_enabled, nearby_alerts_onboarded, daily_pushes_enabled, terms_accepted_at")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -77,6 +78,7 @@ export async function fetchProfile(): Promise<UserProfile | null> {
       nearbyAlertsEnabled: data?.nearby_alerts_enabled ?? true,
       nearbyAlertsOnboarded: data?.nearby_alerts_onboarded ?? false,
       dailyPushesEnabled: data?.daily_pushes_enabled ?? true,
+      termsAcceptedAt: data?.terms_accepted_at ?? null,
     };
   } catch (err) {
     logger.warn("fetchProfile exception (retryable)", err);
@@ -91,6 +93,31 @@ export async function fetchProfile(): Promise<UserProfile | null> {
 export async function fetchInstagramHandle(): Promise<string | null> {
   const profile = await fetchProfile();
   return profile?.instagramHandle ?? null;
+}
+
+/**
+ * Record that the user accepted the Terms of Service and Privacy Policy.
+ * Stores the current timestamp in the profile.
+ */
+export async function acceptTerms(): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ terms_accepted_at: new Date().toISOString() })
+      .eq("id", user.id);
+
+    if (error) {
+      logger.warn("Failed to record terms acceptance", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    logger.warn("acceptTerms exception", err);
+    return false;
+  }
 }
 
 /**

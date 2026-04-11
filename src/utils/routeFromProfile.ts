@@ -35,7 +35,14 @@ export async function fetchAndRoute(router: Router): Promise<boolean> {
     setNearbyAlertsEnabled, setDailyPushesEnabled,
   } = useAuthStore.getState();
 
-  // Age check — must happen before all other onboarding steps
+  // Terms acceptance — must happen before all other onboarding steps
+  if (!profile.termsAcceptedAt) {
+    logger.auth("Terms not accepted, redirecting to terms-acceptance");
+    router.replace("/terms-acceptance");
+    return true;
+  }
+
+  // Age check
   if (!profile.dateOfBirth) {
     logger.auth("No DOB, redirecting to birthday");
     router.replace("/birthday");

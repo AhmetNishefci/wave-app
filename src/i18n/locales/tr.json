@@ -470,5 +470,13 @@
     "radar": "Radar",
     "matches": "Eşleşmeler",
     "settings": "Ayarlar"
+  },
+  "terms": {
+    "title": "Koşullar ve Gizlilik",
+    "subtitle": "Devam etmeden önce lütfen kullanım koşullarımızı ve gizlilik politikamızı okuyup kabul edin.",
+    "termsLink": "Kullanım Koşulları",
+    "privacyLink": "Gizlilik Politikası",
+    "agreeCheckbox": "Kullanım koşullarını ve gizlilik politikasını kabul ediyorum",
+    "continue": "Devam"
   }
 }

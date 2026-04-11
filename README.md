@@ -100,14 +100,24 @@ Wave-app/
 │       └── settings.tsx          # Profile, support & app settings
 ├── src/
 │   ├── components/               # Reusable UI components
+│   │   ├── BlockedUsersSheet.tsx  # Blocked users list + unblock flow
+│   │   ├── LanguagePickerSheet.tsx # Language selector bottom sheet
+│   │   ├── NoteEditor.tsx         # Inline note editor (radar header)
+│   │   ├── PhoneLinkSheet.tsx     # Phone linking OTP flow
+│   │   ├── RadarEmptyState.tsx    # Radar empty states (scanning/idle)
+│   │   ├── SupportTicketSheet.tsx # Support ticket submission
+│   │   ├── ...                    # (PeerRow, Toast, BottomSheet, etc.)
 │   ├── hooks/
 │   │   ├── useBleLifecycle.ts    # BLE lifecycle + foreground reconciliation
 │   │   ├── useEphemeralRotation.ts # Token rotation timer
+│   │   ├── useFilteredPeers.ts   # Peer filtering, sorting, incoming wave filtering
 │   │   ├── useMatchListener.ts   # Realtime subscription hook
 │   │   ├── useNearbyMatchIds.ts  # Nearby match detection
 │   │   ├── useNetworkStatus.ts   # Connectivity monitoring
 │   │   ├── useNoteResolver.ts    # Batch note resolution (polling)
-│   │   └── useNotifications.ts   # Push notification registration
+│   │   ├── useNotifications.ts   # Push notification registration
+│   │   ├── useRadarDiscovery.ts  # Discovery lifecycle (start/stop, auto-start, permissions)
+│   │   └── useWaveActions.ts     # Wave send/undo handlers with retry logic
 │   ├── services/
 │   │   ├── auth.ts               # Google/Apple/Phone auth + sign-out
 │   │   ├── authLinking.ts        # Account identity linking (link/unlink providers)
@@ -160,6 +170,7 @@ Wave-app/
 │   ├── functions/                # 11 Edge Functions
 │   │   ├── _shared/
 │   │   │   ├── cors.ts           # Origin-aware CORS headers
+│   │   │   ├── logger.ts         # Structured JSON logger (request ID, user ID, timing)
 │   │   │   └── validation.ts     # Zod schemas + parseBody helper
 │   │   ├── assign-ephemeral-id/  # Ephemeral token assignment
 │   │   ├── send-wave/            # Wave + match creation (advisory locks)
@@ -172,7 +183,7 @@ Wave-app/
 │   │   ├── delete-account/       # GDPR account deletion
 │   │   ├── auth-instagram/       # Instagram OAuth (backend ready, UI pending)
 │   │   └── auth-callback/        # OAuth callback handler
-│   └── migrations/               # 21 SQL migrations
+│   └── migrations/               # 22 SQL migrations
 └── assets/                       # App icons, splash screen, sounds
 ```
 
@@ -241,7 +252,7 @@ Concurrent GATT connections capped at 4, with queue of max 20.
 - Recent matches (< 5 min) from server trigger celebration on app reopen
 
 ### Offline Resilience
-- **Wave queue**: Staggered retry (3s between) when connectivity returns
+- **Wave queue**: Persisted to AsyncStorage (survives app kills), staggered retry (3s between) when connectivity returns, expired entries (>15 min) discarded on restore
 - **GATT queue**: 4 concurrent, 20 queued with RSSI-based eviction for crowded venues
 - **Realtime reconnection**: Exponential backoff (3s → 60s), network-aware, forced reconnect on foreground
 - **Foreground reconciliation**: Token expiry check, stale wave cleanup, server match fetch, Realtime re-subscribe
@@ -263,6 +274,20 @@ Concurrent GATT connections capped at 4, with queue of max 20.
 - HTML escaping in support emails
 - Block check inside advisory lock (prevents race condition)
 - Per-trigger proximity notification cooldown
+- Rate limiting on token generation (1 per 5s per user)
+- Wave idempotency via `RETURNING` detection (prevents duplicate push on retry)
+
+### Observability
+
+- **Structured logging** — All edge functions emit JSON log lines with request ID (`rid`), function name (`fn`), user ID (`uid`), log level, and request duration via shared `_shared/logger.ts`
+- **Sentry** — Client-side crash reporting with BLE/token context breadcrumbs (tracesSampleRate 0.2)
+- **Push receipt tracking** — Deferred Expo receipt checking in cleanup cron, invalid token cleanup
+
+### Code Quality
+
+- **ESLint** — `eslint-config-expo` with TypeScript rules, zero warnings
+- **TypeScript** — Strict mode, zero errors
+- **Linting**: `npm run lint` (uses `expo lint`)
 
 ---
 
@@ -338,8 +363,8 @@ Without these, cron jobs fire but edge function calls silently fail with 401.
 
 | Function | Purpose | Auth | Validation |
 |----------|---------|------|------------|
-| `assign-ephemeral-id` | Assigns new ephemeral token | JWT | — |
-| `send-wave` | Wave + match creation (advisory locks) | JWT | Zod |
+| `assign-ephemeral-id` | Assigns new ephemeral token (rate limited: 1 per 5s) | JWT | — |
+| `send-wave` | Wave + match creation (advisory locks, idempotent) | JWT | Zod |
 | `remove-match` | Match deletion + broadcast | JWT | Zod |
 | `block-user` | Block + report + match removal | JWT | Zod |
 | `update-location` | PostGIS location + proximity alerts | JWT | Zod |
@@ -354,7 +379,7 @@ Without these, cron jobs fire but edge function calls silently fail with 401.
 
 ## Database Schema
 
-Core tables (21 migrations in `supabase/migrations/`):
+Core tables (22 migrations in `supabase/migrations/`):
 
 - **`profiles`** — User profiles (gender, DOB, handles, preferences, PostGIS location)
 - **`ephemeral_ids`** — Active ephemeral tokens (rotated every 15 min)
@@ -439,7 +464,7 @@ Dark theme via NativeWind/Tailwind:
 
 - **iOS only** for BLE peripheral advertising (scanner works on both platforms)
 - **Supabase Free tier** limits: 200 concurrent Realtime connections, 2 concurrent Edge Functions
-- **No automated tests** — All testing is manual
+- **No automated tests** — All testing is manual (ESLint + TypeScript strict mode catch common issues at dev time)
 - **Crash reporting** — Sentry integrated (36 actionable errors + 197 breadcrumbs with BLE/token context), source maps upload pending first production build
 - **BLE range** — Effective ~30 meters (hardware dependent), best under 10 meters
 - **Support emails** — `support@wavenearby.com` inbox not yet configured (emails send but aren't received until Google Workspace or forwarding is set up)

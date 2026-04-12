@@ -38,14 +38,14 @@ export default function LoginScreen() {
   const [memoryLoaded, setMemoryLoaded] = useState(false);
 
   useEffect(() => {
-    Promise.all([getLastAuthProvider(), getLinkedProviderCache(), getKnownProviders()]).then(
-      ([last, linked, known]) => {
+    Promise.all([getLastAuthProvider(), getLinkedProviderCache(), getKnownProviders()])
+      .then(([last, linked, known]) => {
         setLastProvider(last);
         setLinkedProviders(linked);
         setKnownProviders(known);
-        setMemoryLoaded(true);
-      },
-    );
+      })
+      .catch(() => {})
+      .finally(() => setMemoryLoaded(true));
   }, []);
 
   /** Check if tapping this provider would create a new account */
@@ -89,22 +89,27 @@ export default function LoginScreen() {
     impactMedium();
     setLoadingProvider(provider);
 
-    const { success, error } = provider === "apple"
-      ? await signInWithApple()
-      : await signInWithGoogle();
+    try {
+      const { success, error } = provider === "apple"
+        ? await signInWithApple()
+        : await signInWithGoogle();
 
-    if (success) {
-      const routed = await fetchAndRoute(router);
-      if (!routed) {
-        router.replace("/");
+      if (success) {
+        const routed = await fetchAndRoute(router);
+        if (!routed) {
+          router.replace("/");
+        }
+        return;
+      } else {
+        if (error && error !== "cancelled") {
+          Alert.alert(t("common.signInFailed"), error);
+        }
       }
-      return;
-    } else {
+    } catch {
+      Alert.alert(t("common.signInFailed"), t("common.somethingWentWrong"));
+    } finally {
       setLoadingProvider(null);
       signingInRef.current = false;
-      if (error && error !== "cancelled") {
-        Alert.alert(t("common.signInFailed"), error);
-      }
     }
   };
 

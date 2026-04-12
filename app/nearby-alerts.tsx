@@ -39,42 +39,43 @@ export default function NearbyAlertsScreen() {
     setSaving(true);
     impactMedium();
 
-    // Save preference to server
-    const success = await saveNearbyAlertsPreference(alertsEnabled);
-    if (!success) {
+    try {
+      // Save preference to server
+      const success = await saveNearbyAlertsPreference(alertsEnabled);
+      if (!success) {
+        Alert.alert(t("common.couldntSave"), t("nearbyAlerts.saveError"));
+        return;
+      }
+
+      useAuthStore.getState().setNearbyAlertsEnabled(alertsEnabled);
+
+      // Request location permission if alerts are enabled
+      if (alertsEnabled) {
+        const permResult = await requestLocationPermission();
+        if (permResult === "blocked") {
+          await saveNearbyAlertsPreference(false);
+          useAuthStore.getState().setNearbyAlertsEnabled(false);
+          Alert.alert(
+            t("nearbyAlerts.locationNeeded"),
+            t("nearbyAlerts.locationDenied"),
+            [
+              { text: t("nearbyAlerts.notNow"), style: "cancel" },
+              { text: t("common.openSettings"), onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else if (permResult === "denied") {
+          await saveNearbyAlertsPreference(false);
+          useAuthStore.getState().setNearbyAlertsEnabled(false);
+        }
+      }
+
+      router.replace("/(main)/radar");
+    } catch {
+      Alert.alert(t("common.couldntSave"), t("nearbyAlerts.saveError"));
+    } finally {
       setSaving(false);
       savingRef.current = false;
-      Alert.alert(t("common.couldntSave"), t("nearbyAlerts.saveError"));
-      return;
     }
-
-    useAuthStore.getState().setNearbyAlertsEnabled(alertsEnabled);
-
-    // Request location permission if alerts are enabled
-    if (alertsEnabled) {
-      const permResult = await requestLocationPermission();
-      if (permResult === "blocked") {
-        // Permission permanently denied — guide user to Settings
-        await saveNearbyAlertsPreference(false);
-        useAuthStore.getState().setNearbyAlertsEnabled(false);
-        Alert.alert(
-          t("nearbyAlerts.locationNeeded"),
-          t("nearbyAlerts.locationDenied"),
-          [
-            { text: t("nearbyAlerts.notNow"), style: "cancel" },
-            { text: t("common.openSettings"), onPress: () => Linking.openSettings() },
-          ],
-        );
-      } else if (permResult === "denied") {
-        // User dismissed or denied (can ask again next time)
-        await saveNearbyAlertsPreference(false);
-        useAuthStore.getState().setNearbyAlertsEnabled(false);
-      }
-    }
-
-    setSaving(false);
-    savingRef.current = false;
-    router.replace("/(main)/radar");
   };
 
   const handleSkip = async () => {

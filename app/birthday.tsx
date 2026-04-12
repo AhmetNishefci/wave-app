@@ -73,18 +73,22 @@ export default function BirthdayScreen() {
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
     const dobString = `${y}-${m}-${d}`;
-    const success = await saveDateOfBirth(dobString);
+    try {
+      const success = await saveDateOfBirth(dobString);
 
-    setSaving(false);
-    savingRef.current = false;
+      if (!success) {
+        Alert.alert(t("common.couldntSave"), t("birthday.saveError"));
+        return;
+      }
 
-    if (!success) {
+      useAuthStore.getState().setDateOfBirth(dobString);
+      router.replace("/gender");
+    } catch {
       Alert.alert(t("common.couldntSave"), t("birthday.saveError"));
-      return;
+    } finally {
+      setSaving(false);
+      savingRef.current = false;
     }
-
-    useAuthStore.getState().setDateOfBirth(dobString);
-    router.replace("/gender");
   };
 
   return (

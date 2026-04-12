@@ -75,19 +75,24 @@ export default function GenderScreen() {
     impactMedium();
     setSaving(true);
 
-    const success = await saveGenderProfile(gender, preference, ageMin, ageMax);
-    setSaving(false);
-    savingRef.current = false;
+    try {
+      const success = await saveGenderProfile(gender, preference, ageMin, ageMax);
 
-    if (!success) {
+      if (!success) {
+        Alert.alert(t("common.couldntSave"), t("gender.saveError"));
+        return;
+      }
+
+      useAuthStore.getState().setGender(gender);
+      useAuthStore.getState().setGenderPreference(preference);
+      useAuthStore.getState().setAgePreference(ageMin, ageMax);
+      router.replace("/onboarding");
+    } catch {
       Alert.alert(t("common.couldntSave"), t("gender.saveError"));
-      return;
+    } finally {
+      setSaving(false);
+      savingRef.current = false;
     }
-
-    useAuthStore.getState().setGender(gender);
-    useAuthStore.getState().setGenderPreference(preference);
-    useAuthStore.getState().setAgePreference(ageMin, ageMax);
-    router.replace("/onboarding");
   };
 
   const handleAgeChange = useCallback((lo: number, hi: number) => {

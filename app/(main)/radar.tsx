@@ -95,6 +95,13 @@ export default function RadarScreen() {
     }
   }, []);
 
+  // Cleanup dev tap timer on unmount
+  useEffect(() => {
+    return () => {
+      if (devTapTimer.current) clearTimeout(devTapTimer.current);
+    };
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     if (!isDiscoveryActive) return;
     setRefreshing(true);

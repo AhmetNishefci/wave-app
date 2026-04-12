@@ -34,11 +34,16 @@ export default function TermsAcceptanceScreen() {
     setSaving(true);
     impactMedium();
 
-    const success = await acceptTerms();
-    if (success) {
-      await fetchAndRoute(router);
-    } else {
+    try {
+      const success = await acceptTerms();
+      if (success) {
+        await fetchAndRoute(router);
+      } else {
+        Alert.alert(t("common.error"), t("common.somethingWentWrong"));
+      }
+    } catch {
       Alert.alert(t("common.error"), t("common.somethingWentWrong"));
+    } finally {
       setSaving(false);
       savingRef.current = false;
     }

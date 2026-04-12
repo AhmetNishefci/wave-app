@@ -107,7 +107,7 @@ export default function SettingsScreen() {
   }, []);
 
   useEffect(() => {
-    getLinkedIdentities().then(setLinkedIdentities);
+    getLinkedIdentities().then(setLinkedIdentities).catch(() => {});
   }, []);
 
   const showToast = useCallback((msg: string, variant: ToastVariant = "success") => {
@@ -271,41 +271,44 @@ export default function SettingsScreen() {
     if (savingAlerts) return;
     setSavingAlerts(true);
 
-    // When enabling, ensure location permission is granted
-    if (enabled) {
-      const alreadyGranted = await hasLocationPermission();
-      if (!alreadyGranted) {
-        const blocked = await isLocationBlocked();
-        if (blocked) {
-          setSavingAlerts(false);
-          Alert.alert(
-            t("settings.locationNeeded"),
-            t("settings.locationDenied"),
-            [
-              { text: t("common.cancel"), style: "cancel" },
-              { text: t("common.openSettings"), onPress: () => Linking.openSettings() },
-            ],
-          );
-          return;
-        }
+    try {
+      // When enabling, ensure location permission is granted
+      if (enabled) {
+        const alreadyGranted = await hasLocationPermission();
+        if (!alreadyGranted) {
+          const blocked = await isLocationBlocked();
+          if (blocked) {
+            Alert.alert(
+              t("settings.locationNeeded"),
+              t("settings.locationDenied"),
+              [
+                { text: t("common.cancel"), style: "cancel" },
+                { text: t("common.openSettings"), onPress: () => Linking.openSettings() },
+              ],
+            );
+            return;
+          }
 
-        const permResult = await requestLocationPermission();
-        if (permResult !== "granted") {
-          setSavingAlerts(false);
-          showToast(t("settings.locationRequired"), "error");
-          return;
+          const permResult = await requestLocationPermission();
+          if (permResult !== "granted") {
+            showToast(t("settings.locationRequired"), "error");
+            return;
+          }
         }
       }
-    }
 
-    const success = await saveNearbyAlertsPreference(enabled);
-    setSavingAlerts(false);
+      const success = await saveNearbyAlertsPreference(enabled);
 
-    if (success) {
-      setNearbyAlertsEnabled(enabled);
-      showToast(enabled ? t("settings.alertsEnabled") : t("settings.alertsDisabled"));
-    } else {
+      if (success) {
+        setNearbyAlertsEnabled(enabled);
+        showToast(enabled ? t("settings.alertsEnabled") : t("settings.alertsDisabled"));
+      } else {
+        showToast(t("settings.alertsError"), "error");
+      }
+    } catch {
       showToast(t("settings.alertsError"), "error");
+    } finally {
+      setSavingAlerts(false);
     }
   };
 

@@ -61,6 +61,7 @@ export default function PhoneLoginScreen() {
   // Refs
   const otpInputRef = useRef<TextInput>(null);
   const phoneInputRef = useRef<TextInput>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Full phone in E.164 format
   const fullPhone = `${country.dial}${phoneNumber.replace(/\D/g, "")}`;
@@ -74,6 +75,13 @@ export default function PhoneLoginScreen() {
     }, 1000);
     return () => clearInterval(interval);
   }, [resendTimer]);
+
+  // Cleanup focus timer on unmount
+  useEffect(() => {
+    return () => {
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    };
+  }, []);
 
   const handleSendCode = async () => {
     if (sendingRef.current || !canSend) return;
@@ -90,7 +98,7 @@ export default function PhoneLoginScreen() {
       setStep("otp");
       setOtpCode("");
       setResendTimer(RESEND_COOLDOWN_SECONDS);
-      setTimeout(() => otpInputRef.current?.focus(), 300);
+      focusTimerRef.current = setTimeout(() => otpInputRef.current?.focus(), 300);
     } else if (error) {
       Alert.alert(t("phoneLogin.couldntSendCode"), error);
     }
@@ -103,28 +111,32 @@ export default function PhoneLoginScreen() {
     impactMedium();
     setVerifying(true);
 
-    const { success, error } = await verifyPhoneOtp(fullPhone, otpCode);
+    try {
+      const { success, error } = await verifyPhoneOtp(fullPhone, otpCode);
 
-    if (success) {
-      // Fetch profile and navigate directly — avoids flashing the splash screen.
-      const routed = await fetchAndRoute(router);
-      if (!routed) {
-        router.replace("/");
+      if (success) {
+        const routed = await fetchAndRoute(router);
+        if (!routed) {
+          router.replace("/");
+        }
+        return;
+      } else {
+        const nextAttempts = otpAttempts + 1;
+        setOtpAttempts(nextAttempts);
+        if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+          setOtpLockedUntil(Date.now() + OTP_LOCKOUT_MS);
+          setOtpAttempts(0);
+          Alert.alert(t("phoneLogin.verificationFailed"), t("phoneLogin.tooManyAttempts"));
+        } else if (error) {
+          Alert.alert(t("phoneLogin.verificationFailed"), error);
+        }
+        setOtpCode("");
       }
-      return;
-    } else {
+    } catch {
+      Alert.alert(t("phoneLogin.verificationFailed"), t("common.somethingWentWrong"));
+    } finally {
       setVerifying(false);
       verifyingRef.current = false;
-      const nextAttempts = otpAttempts + 1;
-      setOtpAttempts(nextAttempts);
-      if (nextAttempts >= MAX_OTP_ATTEMPTS) {
-        setOtpLockedUntil(Date.now() + OTP_LOCKOUT_MS);
-        setOtpAttempts(0);
-        Alert.alert(t("phoneLogin.verificationFailed"), t("phoneLogin.tooManyAttempts"));
-      } else if (error) {
-        Alert.alert(t("phoneLogin.verificationFailed"), error);
-      }
-      setOtpCode("");
     }
   };
 

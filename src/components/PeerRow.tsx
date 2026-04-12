@@ -86,7 +86,7 @@ export function PeerRow({
       style={animatedRowStyle}
       className={`py-3 px-4 mb-2 rounded-xl flex-row items-center ${
         isAlreadyMatched
-          ? "bg-pink-500/10 border border-pink-500/20"
+          ? "bg-wave-match/10 border border-wave-match/20"
           : hasWavedAtMe
             ? "bg-green-500/10 border border-green-500/20"
             : "bg-wave-surface"
@@ -97,7 +97,7 @@ export function PeerRow({
         {/* Avatar */}
         <View
           className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-            isAlreadyMatched ? "bg-pink-500/20 border-2 border-pink-500/40" : `${avatar.bg} border-2 ${avatar.ring}`
+            isAlreadyMatched ? "bg-wave-match/20 border-2 border-wave-match/40" : `${avatar.bg} border-2 ${avatar.ring}`
           }`}
         >
           <Text className="text-lg">{isAlreadyMatched ? "✨" : avatar.emoji}</Text>
@@ -110,7 +110,7 @@ export function PeerRow({
               {displayName}
             </Text>
             {isAlreadyMatched ? (
-              <Text className="text-pink-400 text-xs ml-2">{t("peerRow.matched")}</Text>
+              <Text className="text-wave-match text-xs ml-2">{t("peerRow.matched")}</Text>
             ) : hasWavedAtMe ? (
               <Text className="text-green-400 text-xs ml-2">{t("peerRow.wavedAtYou")}</Text>
             ) : wavePending ? (

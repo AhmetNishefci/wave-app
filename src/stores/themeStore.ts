@@ -14,6 +14,7 @@ interface ThemeState {
 
   setTheme: (themeId: string) => void;
   setCustomOverride: (key: keyof ThemeColors, value: string) => void;
+  removeCustomOverride: (key: keyof ThemeColors) => void;
   clearCustomOverrides: () => void;
   resetToDefault: () => void;
 }
@@ -38,6 +39,13 @@ export const useThemeStore = create<ThemeState>()(
         set((state) => ({
           customOverrides: { ...state.customOverrides, [key]: value },
         })),
+
+      removeCustomOverride: (key) =>
+        set((state) => {
+          const next = { ...state.customOverrides };
+          delete next[key];
+          return { customOverrides: next };
+        }),
 
       clearCustomOverrides: () => set({ customOverrides: {} }),
 

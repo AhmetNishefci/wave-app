@@ -25,6 +25,13 @@ function getColor(prop: string): string {
  *
  * Typed as ThemeColors for autocomplete and type safety.
  * The Proxy resolves values dynamically at runtime.
+ *
+ * IMPORTANT: This is NOT reactive. React doesn't know when COLORS changes.
+ * Components get updated values because ThemeProvider re-renders the entire
+ * tree on theme change, which re-evaluates all COLORS accesses. If a
+ * component is wrapped in React.memo(), it will skip re-rendering and
+ * its COLORS values will be stale. Do NOT use React.memo() on components
+ * that reference COLORS in inline styles.
  */
 export const COLORS: Readonly<ThemeColors> = new Proxy({} as ThemeColors, {
   get(_target, prop: string) {

@@ -202,7 +202,7 @@ export function PeerDetailModal({
       <View className="items-center mb-4">
         <View
           className={`w-14 h-14 rounded-full items-center justify-center mb-3 ${
-            isMatched ? "bg-pink-500/20 border-2 border-pink-500/40" : `${avatar.bg} border-2 ${avatar.ring}`
+            isMatched ? "bg-wave-match/20 border-2 border-wave-match/40" : `${avatar.bg} border-2 ${avatar.ring}`
           }`}
         >
           <Text className="text-2xl">{isMatched ? "✨" : avatar.emoji}</Text>

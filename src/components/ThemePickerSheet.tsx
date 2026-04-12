@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -26,19 +26,19 @@ const PALETTE_COLS = 8;
 const DOT_SIZE = 28;
 const DOT_GAP = 6;
 
-/** Color tokens exposed to the custom editor, with user-friendly labels */
-const CUSTOM_COLOR_KEYS: { key: keyof ThemeColors; label: string }[] = [
-  { key: "bg", label: "Background" },
-  { key: "surface", label: "Surface" },
-  { key: "primary", label: "Primary" },
-  { key: "accent", label: "Accent" },
-  { key: "text", label: "Text" },
-  { key: "muted", label: "Muted Text" },
-  { key: "danger", label: "Danger" },
-  { key: "wave", label: "Wave Action" },
-  { key: "match", label: "Match" },
-  { key: "placeholder", label: "Placeholder" },
-  { key: "switchOff", label: "Switch Off" },
+/** Color tokens exposed to the custom editor, with i18n label keys */
+const CUSTOM_COLOR_KEYS: { key: keyof ThemeColors; labelKey: string }[] = [
+  { key: "bg", labelKey: "settings.colorBg" },
+  { key: "surface", labelKey: "settings.colorSurface" },
+  { key: "primary", labelKey: "settings.colorPrimary" },
+  { key: "accent", labelKey: "settings.colorAccent" },
+  { key: "text", labelKey: "settings.colorText" },
+  { key: "muted", labelKey: "settings.colorMuted" },
+  { key: "danger", labelKey: "settings.colorDanger" },
+  { key: "wave", labelKey: "settings.colorWave" },
+  { key: "match", labelKey: "settings.colorMatch" },
+  { key: "placeholder", labelKey: "settings.colorPlaceholder" },
+  { key: "switchOff", labelKey: "settings.colorSwitchOff" },
 ];
 
 type Props = {
@@ -55,6 +55,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
   const removeCustomOverride = useThemeStore((s) => s.removeCustomOverride);
   const resetToDefault = useThemeStore((s) => s.resetToDefault);
 
+  const scrollRef = useRef<ScrollView>(null);
   const [showCustom, setShowCustom] = useState(Object.keys(customOverrides).length > 0);
   const [editingKey, setEditingKey] = useState<keyof ThemeColors | null>(null);
   const [showHexInput, setShowHexInput] = useState(false);
@@ -98,6 +99,10 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
     setHexInput(currentValue);
     setEditingKey(key);
     setShowHexInput(false);
+    // Auto-scroll so the palette is visible after layout
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const applyColor = (key: keyof ThemeColors, value: string) => {
@@ -108,10 +113,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
 
   const handlePalettePick = (color: string) => {
     if (!editingKey) return;
-    if (applyColor(editingKey, color)) {
-      setEditingKey(null);
-      setShowHexInput(false);
-    }
+    applyColor(editingKey, color);
   };
 
   const handleHexSubmit = () => {
@@ -127,10 +129,8 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
       Alert.alert(t("common.error"), t("settings.invalidHex"));
       return;
     }
-    if (applyColor(editingKey, finalHex)) {
-      setEditingKey(null);
-      setShowHexInput(false);
-    }
+    applyColor(editingKey, finalHex);
+    setHexInput(finalHex);
   };
 
   const handleResetSingleColor = (key: keyof ThemeColors) => {
@@ -149,7 +149,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
         {/* Title */}
         <Text className="text-white text-lg font-semibold text-center mb-4">
           {t("settings.theme")}
@@ -158,17 +158,23 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
         {/* Preset grid */}
         <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
           {THEME_PRESETS.map((preset) => {
-            const isActive = preset.id === activeThemeId && !hasOverrides;
+            const isActive = preset.id === activeThemeId;
             return (
               <TouchableOpacity
                 key={preset.id}
                 onPress={() => handleSelectPreset(preset.id)}
                 className={`rounded-xl p-3 border ${
                   isActive
-                    ? "border-wave-primary bg-wave-primary/10"
+                    ? "border-transparent"
                     : "border-wave-muted/20 bg-wave-bg"
                 }`}
-                style={{ width: "48%" }}
+                style={[
+                  { width: "48%" },
+                  isActive ? {
+                    borderColor: resolvedColors.primary,
+                    backgroundColor: resolvedColors.primary + "1A",
+                  } : undefined,
+                ]}
                 activeOpacity={0.7}
               >
                 {/* Preview dots */}
@@ -180,13 +186,13 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                     />
                   ))}
                 </View>
-                <Text className="text-white text-sm font-semibold">{preset.name}</Text>
+                <Text className="text-white text-sm font-semibold">{t(preset.nameKey)}</Text>
                 <Text className="text-wave-muted text-xs mt-0.5" numberOfLines={1}>
-                  {preset.description}
+                  {t(preset.descKey)}
                 </Text>
                 {isActive && (
                   <View className="absolute top-2 right-2">
-                    <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                    <Ionicons name="checkmark-circle" size={18} color={resolvedColors.primary} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -214,7 +220,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
             </Text>
 
             <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-              {CUSTOM_COLOR_KEYS.map(({ key, label }) => {
+              {CUSTOM_COLOR_KEYS.map(({ key, labelKey }) => {
                 const color = resolvedColors[key];
                 const isEditing = editingKey === key;
                 const isOverridden = key in customOverrides;
@@ -224,12 +230,15 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                     <TouchableOpacity
                       onPress={() => handleColorTap(key)}
                       className={`rounded-xl px-3 py-2.5 flex-row items-center border ${
-                        isEditing
-                          ? "border-wave-primary bg-wave-primary/10"
-                          : isOverridden
-                            ? "border-wave-accent/30 bg-wave-bg"
-                            : "border-transparent bg-wave-bg"
+                        isEditing || isOverridden
+                          ? "border-transparent"
+                          : "border-transparent bg-wave-bg"
                       }`}
+                      style={
+                        isEditing || isOverridden
+                          ? { borderColor: resolvedColors.primary + "4D", backgroundColor: resolvedColors.primary + "1A" }
+                          : undefined
+                      }
                       activeOpacity={0.7}
                     >
                       <View
@@ -244,10 +253,10 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                         }}
                       />
                       <View className="flex-1">
-                        <Text className="text-white text-xs font-semibold">{label}</Text>
+                        <Text className="text-white text-xs font-semibold">{t(labelKey)}</Text>
                         <Text className="text-wave-muted text-xs">{color}</Text>
                       </View>
-                      {isOverridden && !isEditing && (
+                      {isOverridden && (
                         <TouchableOpacity
                           onPress={() => handleResetSingleColor(key)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

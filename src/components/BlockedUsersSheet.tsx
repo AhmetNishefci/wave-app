@@ -21,14 +21,14 @@ type Props = {
   showToast: (msg: string, variant?: ToastVariant) => void;
 };
 
-function formatDateTime(date: Date): string {
-  const dateStr = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  const timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function formatDateTime(date: Date, locale: string): string {
+  const dateStr = date.toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" });
+  const timeStr = date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   return `${dateStr}, ${timeStr}`;
 }
 
 export function BlockedUsersSheet({ visible, onClose, showToast }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [unblockTarget, setUnblockTarget] = useState<{ blockedId: string; displayName: string | null } | null>(null);
@@ -182,7 +182,7 @@ export function BlockedUsersSheet({ visible, onClose, showToast }: Props) {
                               {user.displayName || t("history.someoneNearby")}
                             </Text>
                             <Text className="text-wave-muted text-xs mt-0.5">
-                              {formatDateTime(new Date(user.createdAt))}
+                              {formatDateTime(new Date(user.createdAt), i18n.language)}
                             </Text>
                           </View>
                           <TouchableOpacity

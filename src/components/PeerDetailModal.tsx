@@ -110,7 +110,7 @@ export function PeerDetailModal({
   // Report flow UI (replaces the default peer detail view)
   if (showReport) {
     return (
-      <BottomSheet visible onClose={() => { setShowReport(false); setSelectedReason(null); setReportDetails(""); }}>
+      <BottomSheet visible onClose={onClose}>
         <View className="items-center mb-4">
           <Ionicons name="flag-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
           <Text className="text-white text-lg font-semibold">
@@ -170,7 +170,7 @@ export function PeerDetailModal({
           onPress={handleSubmitReport}
           disabled={!selectedReason || blocking}
           className={`w-full rounded-2xl py-4 items-center justify-center mb-2 ${
-            selectedReason ? "bg-wave-primary" : "bg-wave-primary/30"
+            selectedReason ? "bg-wave-danger" : "bg-wave-danger/30"
           }`}
           activeOpacity={0.8}
         >
@@ -274,8 +274,8 @@ export function PeerDetailModal({
             className="flex-1 bg-wave-bg rounded-xl py-3 flex-row items-center justify-center"
             activeOpacity={0.7}
           >
-            <Ionicons name="flag-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
-            <Text className="text-wave-muted text-sm">{t("history.reportUser")}</Text>
+            <Ionicons name="flag-outline" size={16} color={COLORS.danger} style={{ marginRight: 6 }} />
+            <Text className="text-wave-danger text-sm">{t("history.reportUser")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleBlock}
@@ -283,8 +283,8 @@ export function PeerDetailModal({
             className="flex-1 bg-wave-bg rounded-xl py-3 flex-row items-center justify-center"
             activeOpacity={0.7}
           >
-            <Ionicons name="ban-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
-            <Text className="text-wave-muted text-sm">{t("history.blockUser")}</Text>
+            <Ionicons name="ban-outline" size={16} color={COLORS.danger} style={{ marginRight: 6 }} />
+            <Text className="text-wave-danger text-sm">{t("history.blockUser")}</Text>
           </TouchableOpacity>
         </View>
       )}

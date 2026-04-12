@@ -462,7 +462,7 @@ export default function SettingsScreen() {
         )}
         {dateOfBirth && (
           <>
-            <InfoRow label={t("settings.birthday")} value={formatDob(dateOfBirth)} />
+            <InfoRow label={t("settings.birthday")} value={formatDob(dateOfBirth, i18n.language)} />
             <InfoRow label={t("settings.age")} value={`${getAgeFromDob(dateOfBirth)}`} />
           </>
         )}
@@ -574,7 +574,7 @@ export default function SettingsScreen() {
                   ))}
                 </View>
               )}
-              <Text className="text-white text-sm">{activePreset?.name ?? "Custom"}</Text>
+              <Text className="text-white text-sm">{activePreset ? t(activePreset.nameKey) : t("settings.theme")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
           </View>
@@ -998,9 +998,9 @@ export default function SettingsScreen() {
   );
 }
 
-function formatDob(dob: string): string {
+function formatDob(dob: string, locale: string): string {
   const d = new Date(dob + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" });
 }
 
 function Section({

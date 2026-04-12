@@ -48,6 +48,14 @@ export default function MainLayout() {
         });
       }
     });
+    const unsubTheme = useThemeStore.subscribe((state, prev) => {
+      if (state.activeThemeId !== prev.activeThemeId || state.customOverrides !== prev.customOverrides) {
+        Sentry.setContext("theme", {
+          preset: state.activeThemeId,
+          overrides: Object.keys(state.customOverrides),
+        });
+      }
+    });
     // Set initial context
     const bleState = useBleStore.getState();
     Sentry.setContext("ble", { adapterState: bleState.adapterState, isDiscoveryActive: bleState.isDiscoveryActive });
@@ -56,7 +64,12 @@ export default function MainLayout() {
       hasToken: !!tokenState.currentToken,
       expiresIn: tokenState.tokenExpiresAt ? Math.round((tokenState.tokenExpiresAt - Date.now()) / 1000) : null,
     });
-    return () => { unsubBle(); unsubToken(); };
+    const themeState = useThemeStore.getState();
+    Sentry.setContext("theme", {
+      preset: themeState.activeThemeId,
+      overrides: Object.keys(themeState.customOverrides),
+    });
+    return () => { unsubBle(); unsubToken(); unsubTheme(); };
   }, []);
 
   // Sync app icon badge with unseen match count (reads from store directly

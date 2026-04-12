@@ -11,6 +11,7 @@ import { logger } from "@/utils/logger";
 import { COLORS } from "@/constants/colors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { useThemeStore } from "@/stores/themeStore";
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -34,6 +35,10 @@ Sentry.init({
 
 export default function RootLayout() {
   const setSession = useAuthStore((s) => s.setSession);
+
+  // Subscribe to theme changes so contentStyle background updates live.
+  useThemeStore((s) => s.activeThemeId);
+  useThemeStore((s) => s.customOverrides);
 
   useEffect(() => {
     // Use onAuthStateChange for both initial session and subsequent changes.

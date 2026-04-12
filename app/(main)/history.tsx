@@ -275,23 +275,24 @@ function MatchRow({
   onPress: (match: Match) => void;
   isNearby?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
   const matchDate = new Date(match.createdAt);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - 86_400_000);
   const thisWeekStart = new Date(today.getTime() - ((now.getDay() === 0 ? 6 : now.getDay() - 1) * 86_400_000));
 
-  const timeStr = matchDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timeStr = matchDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   const matchLabel = matchDate >= today
     ? timeStr
     : matchDate >= yesterday
       ? timeStr
       : matchDate >= thisWeekStart
-        ? `${matchDate.toLocaleDateString("en-US", { weekday: "long" })}, ${timeStr}`
+        ? `${matchDate.toLocaleDateString(locale, { weekday: "long" })}, ${timeStr}`
         : matchDate.getFullYear() === now.getFullYear()
-          ? `${matchDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}, ${timeStr}`
-          : `${matchDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}, ${timeStr}`;
+          ? `${matchDate.toLocaleDateString(locale, { month: "long", day: "numeric" })}, ${timeStr}`
+          : `${matchDate.toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" })}, ${timeStr}`;
 
   const igHandle = match.instagramHandle;
   const scHandle = match.snapchatHandle;

@@ -28,9 +28,11 @@ export interface ThemeColors {
 
 export interface ThemePreset {
   id: string;
-  name: string;
-  description: string;
-  /** 3 preview colors shown in the preset card: [primary, wave/accent, match] */
+  /** i18n key for the theme name (settings.themeMidnight, etc.) */
+  nameKey: string;
+  /** i18n key for the theme description */
+  descKey: string;
+  /** 3 preview colors shown in the preset card: [primary, wave, match] */
   preview: [string, string, string];
   colors: ThemeColors;
 }
@@ -158,43 +160,43 @@ const NEON_NOIR: ThemeColors = {
 export const THEME_PRESETS: ThemePreset[] = [
   {
     id: "midnight_default",
-    name: "Midnight",
-    description: "Classic purple & teal",
+    nameKey: "settings.themeMidnight",
+    descKey: "settings.themeMidnightDesc",
     preview: ["#6c63ff", "#4ecdc4", "#ec4899"],
     colors: MIDNIGHT_DEFAULT,
   },
   {
     id: "warm_midnight",
-    name: "Warm Signal",
-    description: "Coral & teal - warm meets electric",
+    nameKey: "settings.themeWarmSignal",
+    descKey: "settings.themeWarmSignalDesc",
     preview: ["#f96b66", "#14d4c0", "#bf8fef"],
     colors: WARM_MIDNIGHT,
   },
   {
     id: "emerald",
-    name: "Emerald",
-    description: "Forest green & amber gold",
+    nameKey: "settings.themeEmerald",
+    descKey: "settings.themeEmeraldDesc",
     preview: ["#10b981", "#e8a830", "#f472b6"],
     colors: EMERALD,
   },
   {
     id: "solar",
-    name: "Solar",
-    description: "Warm amber & golden glow",
+    nameKey: "settings.themeSolar",
+    descKey: "settings.themeSolarDesc",
     preview: ["#f9941f", "#e8825c", "#e64c7f"],
     colors: SOLAR,
   },
   {
     id: "arctic",
-    name: "Arctic",
-    description: "Cool ice blue & silver",
+    nameKey: "settings.themeArctic",
+    descKey: "settings.themeArcticDesc",
     preview: ["#35b7f3", "#8b9cf7", "#e458b5"],
     colors: ARCTIC,
   },
   {
     id: "neon_noir",
-    name: "Neon Noir",
-    description: "Hot pink & electric lime",
+    nameKey: "settings.themeNeonNoir",
+    descKey: "settings.themeNeonNoirDesc",
     preview: ["#f53d99", "#13ecda", "#f9d51f"],
     colors: NEON_NOIR,
   },

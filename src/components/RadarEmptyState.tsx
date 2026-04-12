@@ -48,8 +48,8 @@ export function RadarEmptyState({ isDiscoveryActive, showProximityHint, onInvite
     <View className="items-center mt-16">
       {/* Static radar icon (no pulse) */}
       <View className="w-36 h-36 items-center justify-center">
-        <View className="absolute w-36 h-36 rounded-full border-2 border-indigo-500/15" />
-        <View className="absolute w-24 h-24 rounded-full border-2 border-indigo-500/20" />
+        <View className="absolute w-36 h-36 rounded-full border-2 border-wave-primary/15" />
+        <View className="absolute w-24 h-24 rounded-full border-2 border-wave-primary/20" />
         <View className="w-16 h-16 rounded-full bg-wave-primary/20 items-center justify-center border-2 border-wave-primary/40">
           <Text className="text-3xl">📡</Text>
         </View>

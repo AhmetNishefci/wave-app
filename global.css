@@ -8,13 +8,13 @@
  * At runtime, ThemeProvider overrides them via NativeWind's vars() API.
  */
 :root {
-  --color-wave-bg: #0a0a0a;
-  --color-wave-surface: #1a1a2e;
-  --color-wave-primary: #6c63ff;
-  --color-wave-accent: #00d4aa;
-  --color-wave-text: #e0e0e0;
-  --color-wave-muted: #8585a0;
-  --color-wave-danger: #ff4757;
-  --color-wave-wave: #4ecdc4;
-  --color-wave-match: #ec4899;
+  --color-wave-bg: 10 10 10;
+  --color-wave-surface: 26 26 46;
+  --color-wave-primary: 108 99 255;
+  --color-wave-accent: 0 212 170;
+  --color-wave-text: 224 224 224;
+  --color-wave-muted: 133 133 160;
+  --color-wave-danger: 255 71 87;
+  --color-wave-wave: 78 205 196;
+  --color-wave-match: 236 72 153;
 }

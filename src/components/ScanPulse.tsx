@@ -8,8 +8,9 @@ import Animated, {
   withDelay,
   Easing,
 } from "react-native-reanimated";
+import { COLORS } from "@/constants/colors";
 
-function PulseRing({ delay }: { delay: number }) {
+function PulseRing({ delay, color }: { delay: number; color: string }) {
   const scale = useSharedValue(0.3);
   const opacity = useSharedValue(0.6);
 
@@ -46,7 +47,7 @@ function PulseRing({ delay }: { delay: number }) {
           height: 140,
           borderRadius: 70,
           borderWidth: 2,
-          borderColor: "rgba(99, 102, 241, 0.35)",
+          borderColor: color,
         },
         animatedStyle,
       ]}
@@ -57,9 +58,9 @@ function PulseRing({ delay }: { delay: number }) {
 export function ScanPulse() {
   return (
     <View className="w-36 h-36 items-center justify-center">
-      <PulseRing delay={0} />
-      <PulseRing delay={800} />
-      <PulseRing delay={1600} />
+      <PulseRing delay={0} color={COLORS.primary + "59"} />
+      <PulseRing delay={800} color={COLORS.primary + "59"} />
+      <PulseRing delay={1600} color={COLORS.primary + "59"} />
       <View className="w-16 h-16 rounded-full bg-wave-primary/20 items-center justify-center border-2 border-wave-primary/40">
         <Text className="text-3xl">📡</Text>
       </View>

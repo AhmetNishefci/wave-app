@@ -6,7 +6,6 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { useThemeStore } from "@/stores/themeStore";
 import { THEME_PRESETS, DEFAULT_THEME_ID, type ThemeColors } from "@/constants/themes";
 import { COLORS } from "@/constants/colors";
-import { validateColorContrast } from "@/utils/colorContrast";
 import { impactLight } from "@/utils/haptics";
 
 // ─── Curated color palette ─────────────────────────────────────
@@ -101,17 +100,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
     setShowHexInput(false);
   };
 
-  /** Apply a color, checking contrast first */
   const applyColor = (key: keyof ThemeColors, value: string) => {
-    const currentColors = useThemeStore.getState().getActiveColors();
-    const error = validateColorContrast(key, value, currentColors as unknown as Record<string, string>);
-    if (error) {
-      Alert.alert(
-        t("settings.contrastWarning"),
-        t("settings.contrastWarningBody", { detail: error }),
-      );
-      return false;
-    }
     impactLight();
     setCustomOverride(key, value);
     return true;
@@ -258,7 +247,6 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                         <Text className="text-white text-xs font-semibold">{label}</Text>
                         <Text className="text-wave-muted text-xs">{color}</Text>
                       </View>
-                      {/* Per-color reset button */}
                       {isOverridden && !isEditing && (
                         <TouchableOpacity
                           onPress={() => handleResetSingleColor(key)}
@@ -268,78 +256,75 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                         </TouchableOpacity>
                       )}
                     </TouchableOpacity>
-
-                    {/* Color picker: palette grid + optional hex input */}
-                    {isEditing && (
-                      <View className="mt-2 bg-wave-surface/50 rounded-xl p-2.5">
-                        {/* Palette grid */}
-                        <View style={{ gap: DOT_GAP }}>
-                          {Array.from({ length: Math.ceil(PALETTE.length / PALETTE_COLS) }, (_, row) => (
-                            <View key={row} className="flex-row" style={{ gap: DOT_GAP }}>
-                              {PALETTE.slice(row * PALETTE_COLS, (row + 1) * PALETTE_COLS).map((paletteColor) => {
-                                const isSelected = color.toLowerCase() === paletteColor.toLowerCase();
-                                return (
-                                  <TouchableOpacity
-                                    key={paletteColor}
-                                    onPress={() => handlePalettePick(paletteColor)}
-                                    style={{
-                                      width: DOT_SIZE,
-                                      height: DOT_SIZE,
-                                      borderRadius: DOT_SIZE / 2,
-                                      backgroundColor: paletteColor,
-                                      borderWidth: isSelected ? 2.5 : 1,
-                                      borderColor: isSelected ? "#ffffff" : "rgba(255,255,255,0.12)",
-                                    }}
-                                  />
-                                );
-                              })}
-                            </View>
-                          ))}
-                        </View>
-
-                        {/* Hex input toggle */}
-                        <TouchableOpacity
-                          onPress={() => setShowHexInput(!showHexInput)}
-                          className="flex-row items-center justify-center mt-2.5 py-1"
-                          activeOpacity={0.7}
-                        >
-                          <Text className="text-wave-muted text-xs">
-                            {showHexInput ? t("settings.hidHexInput") : t("settings.customHex")}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Hex input (advanced) */}
-                        {showHexInput && (
-                          <View className="flex-row items-center mt-1.5" style={{ gap: 6 }}>
-                            <TextInput
-                              value={hexInput}
-                              onChangeText={setHexInput}
-                              placeholder="#000000"
-                              placeholderTextColor={COLORS.placeholder}
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                              maxLength={7}
-                              autoFocus
-                              returnKeyType="done"
-                              onSubmitEditing={handleHexSubmit}
-                              className="flex-1 bg-wave-bg rounded-lg px-3 text-white text-xs"
-                              style={{ height: 32, paddingVertical: 0 }}
-                            />
-                            <TouchableOpacity
-                              onPress={handleHexSubmit}
-                              className="bg-wave-primary rounded-lg px-3 items-center justify-center"
-                              style={{ height: 32 }}
-                            >
-                              <Ionicons name="checkmark" size={16} color="white" />
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
-                    )}
                   </View>
                 );
               })}
             </View>
+
+            {/* Color picker: full width below the grid */}
+            {editingKey && (
+              <View className="mt-2 bg-wave-surface/50 rounded-xl p-2.5">
+                <View style={{ gap: DOT_GAP }}>
+                  {Array.from({ length: Math.ceil(PALETTE.length / PALETTE_COLS) }, (_, row) => (
+                    <View key={row} className="flex-row justify-center" style={{ gap: DOT_GAP }}>
+                      {PALETTE.slice(row * PALETTE_COLS, (row + 1) * PALETTE_COLS).map((paletteColor) => {
+                        const isSelected = resolvedColors[editingKey].toLowerCase() === paletteColor.toLowerCase();
+                        return (
+                          <TouchableOpacity
+                            key={paletteColor}
+                            onPress={() => handlePalettePick(paletteColor)}
+                            style={{
+                              width: DOT_SIZE,
+                              height: DOT_SIZE,
+                              borderRadius: DOT_SIZE / 2,
+                              backgroundColor: paletteColor,
+                              borderWidth: isSelected ? 2.5 : 1,
+                              borderColor: isSelected ? "#ffffff" : "rgba(255,255,255,0.12)",
+                            }}
+                          />
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setShowHexInput(!showHexInput)}
+                  className="flex-row items-center justify-center mt-2.5 py-1"
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-wave-muted text-xs">
+                    {showHexInput ? t("settings.hidHexInput") : t("settings.customHex")}
+                  </Text>
+                </TouchableOpacity>
+
+                {showHexInput && (
+                  <View className="flex-row items-center mt-1.5" style={{ gap: 6 }}>
+                    <TextInput
+                      value={hexInput}
+                      onChangeText={setHexInput}
+                      placeholder="#000000"
+                      placeholderTextColor={COLORS.placeholder}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={7}
+                      autoFocus
+                      returnKeyType="done"
+                      onSubmitEditing={handleHexSubmit}
+                      className="flex-1 bg-wave-bg rounded-lg px-3 text-white text-xs"
+                      style={{ height: 32, paddingVertical: 0 }}
+                    />
+                    <TouchableOpacity
+                      onPress={handleHexSubmit}
+                      className="bg-wave-primary rounded-lg px-3 items-center justify-center"
+                      style={{ height: 32 }}
+                    >
+                      <Ionicons name="checkmark" size={16} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
 

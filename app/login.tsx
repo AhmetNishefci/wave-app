@@ -150,7 +150,7 @@ export default function LoginScreen() {
         />
         <Image
           source={waveHand}
-          style={{ width: 100, height: 100 }}
+          style={{ width: 100, height: 100, tintColor: COLORS.primary }}
           resizeMode="contain"
         />
       </View>

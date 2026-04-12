@@ -122,7 +122,7 @@ export default function IndexScreen() {
     <View className="flex-1 items-center justify-center bg-wave-bg">
       <Image
         source={waveHand}
-        style={{ width: 80, height: 80 }}
+        style={{ width: 80, height: 80, tintColor: COLORS.primary }}
         resizeMode="contain"
       />
       <Text className="text-4xl font-bold text-white mb-6">{t("common.wave")}</Text>

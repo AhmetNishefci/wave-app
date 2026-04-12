@@ -44,7 +44,7 @@ function Segment({ state }: { state: "done" | "active" | "pending" }) {
   }));
 
   return (
-    <View className="flex-1 rounded-full overflow-hidden" style={{ height: 3, backgroundColor: "rgba(102, 102, 128, 0.15)" }}>
+    <View className="flex-1 rounded-full overflow-hidden" style={{ height: 3, backgroundColor: COLORS.muted + "26" }}>
       <Animated.View className="rounded-full" style={[{ height: 3, backgroundColor: COLORS.primary }, fillStyle]} />
     </View>
   );

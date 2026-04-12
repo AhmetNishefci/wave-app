@@ -16,10 +16,19 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { logger } from "@/utils/logger";
 import { preloadSounds } from "@/utils/sound";
 import { COLORS } from "@/constants/colors";
+import { useThemeStore } from "@/stores/themeStore";
 
 export default function MainLayout() {
   const { t } = useTranslation();
   const router = useRouter();
+
+  // Subscribe to theme changes so tab bar colors update live.
+  // COLORS proxy returns fresh values on re-render, but MainLayout
+  // must actually re-render for those accesses to fire. Theme changes
+  // are rare user-initiated actions, not the rapid state changes
+  // that the store.subscribe() pattern elsewhere is guarding against.
+  useThemeStore((s) => s.activeThemeId);
+  useThemeStore((s) => s.customOverrides);
   // Keep Sentry context updated with device state for crash diagnostics.
   // Uses store.subscribe to avoid re-rendering the Tabs layout.
   useEffect(() => {
@@ -214,7 +223,7 @@ function MatchTabIcon({ color, size }: { color: string; size: number }) {
             paddingHorizontal: 4,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
+          <Text style={{ color: COLORS.white, fontSize: 10, fontWeight: "700" }}>
             {unseenCount}
           </Text>
         </View>

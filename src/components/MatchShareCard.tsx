@@ -98,7 +98,7 @@ export function MatchShareCard() {
             {/* Wave hand logo */}
             <Image
               source={waveHand}
-              style={{ width: 220, height: 220, marginBottom: 56 }}
+              style={{ width: 220, height: 220, marginBottom: 56, tintColor: COLORS.primary }}
               resizeMode="contain"
             />
 

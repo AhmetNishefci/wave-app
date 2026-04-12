@@ -8,6 +8,7 @@ import type { NearbyPeer } from "@/types";
 import { getAvatarForToken, getDistanceZone } from "@/types";
 import { ZONE_CONFIG } from "@/constants/zones";
 import { WAVE_EXPIRY_MINUTES } from "@/services/ble/constants";
+import { COLORS } from "@/constants/colors";
 
 const WAVE_EXPIRY_MS = WAVE_EXPIRY_MINUTES * 60 * 1_000;
 
@@ -158,7 +159,7 @@ export function PeerRow({
           }`}
         >
           {isWavingBack ? (
-            <ActivityIndicator size="small" color="#4ade80" />
+            <ActivityIndicator size="small" color={COLORS.wave} />
           ) : (
             <Text
               className={`font-semibold text-sm ${

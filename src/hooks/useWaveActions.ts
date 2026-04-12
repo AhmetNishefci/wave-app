@@ -39,7 +39,7 @@ export function useWaveActions(setToast: SetToast) {
       isWaveBack,
     });
 
-    const result = await sendWave(peer.ephemeralToken);
+    const result = await sendWave(peer.ephemeralToken, peer.userId);
     if (isWaveBack) store.removeWavingBack(peer.ephemeralToken);
 
     if (result.status === "expired_token") {
@@ -61,7 +61,7 @@ export function useWaveActions(setToast: SetToast) {
             fresh: freshToken.substring(0, 8),
           });
           if (!isWaveBack) store.addPendingWave(freshToken);
-          const retry = await sendWave(freshToken);
+          const retry = await sendWave(freshToken, peer.userId);
           if (retry.status === "pending") {
             if (!isWaveBack) {
               if (retry.targetUserId) {
@@ -144,12 +144,16 @@ export function useWaveActions(setToast: SetToast) {
     if (undoingRef.current === targetToken) return;
     undoingRef.current = targetToken;
     impactLight();
-    const success = await undoWave(targetToken);
+    const result = await undoWave(targetToken);
     undoingRef.current = null;
-    if (success) {
+    if (result === "success") {
       useWaveStore.getState().removePendingWave(targetToken);
       useMatchStore.getState().removePendingWaveByToken(targetToken);
       setToast({ message: t("radar.waveUndoneToast") });
+    } else if (result === "expired") {
+      // Wave was already consumed (match created) or expired — remove stale pending state
+      useWaveStore.getState().removePendingWave(targetToken);
+      setToast({ message: t("radar.undoExpired"), variant: "error" });
     } else {
       notifyError();
       setToast({ message: t("radar.couldntUndo"), variant: "error" });

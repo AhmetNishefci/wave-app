@@ -15,11 +15,18 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
  *  pushes without needing a separate tracking table. */
 const ENGAGEMENT_COOLDOWN_HOURS = 24;
 
-/** Only target users active within this many days */
+/** Only target users active within this many days.
+ *  The RPC also enforces the 24h cooldown, so users active today get
+ *  pushed tomorrow at earliest. Users who haven't opened the app in
+ *  7+ days are considered lapsed — no point pushing. */
 const ACTIVE_WITHIN_DAYS = 7;
 
 /** Auto-pause after N consecutive sends with no app open */
 const MAX_IGNORED_SENDS = 5;
+
+/** Minimum idle hours before a user is eligible for re-engagement.
+ *  20h = user active at 10 PM won't get pushed until 6 PM next day. */
+const MIN_IDLE_HOURS = 20;
 
 /** Target local hours (inclusive) — 6 PM to 8 PM (sends at 6, 7, 8 PM local) */
 const TARGET_HOUR_START = 18;
@@ -209,6 +216,7 @@ serve(async (req: Request) => {
         p_active_within_days: ACTIVE_WITHIN_DAYS,
         p_engagement_cooldown_hours: ENGAGEMENT_COOLDOWN_HOURS,
         p_max_ignored_sends: MAX_IGNORED_SENDS,
+        p_min_idle_hours: MIN_IDLE_HOURS,
         p_max_results: MAX_ELIGIBLE_USERS,
       },
     );

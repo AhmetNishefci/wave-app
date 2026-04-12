@@ -5,6 +5,8 @@ import { clearWaveStateForUser } from "@/utils/waveCleanup";
 import type { Match } from "@/types";
 
 const PAGE_SIZE = 50;
+const FETCH_DEBOUNCE_MS = 10_000; // Skip redundant fetches within 10 seconds
+let lastFetchAt = 0;
 
 /**
  * Fetch the first page of matches for the current user from the server.
@@ -12,9 +14,16 @@ const PAGE_SIZE = 50;
  * Uses the get_matched_instagram_handles RPC to securely fetch handles
  * (profiles RLS only allows reading own row, so the old join returned null).
  *
+ * Debounced: skips if called within 10 seconds of a successful fetch
+ * (prevents redundant calls when foreground + Realtime both fire).
+ *
  * Returns true if there are more matches to load, false otherwise.
  */
 export async function fetchMatchesFromServer(): Promise<boolean> {
+  const now = Date.now();
+  if (now - lastFetchAt < FETCH_DEBOUNCE_MS) {
+    return false;
+  }
   try {
     const {
       data: { user },
@@ -45,10 +54,12 @@ export async function fetchMatchesFromServer(): Promise<boolean> {
         store.clearMatches();
         logger.wave("Cleared all local matches (server has none)");
       }
+      lastFetchAt = Date.now();
       return false;
     }
 
     await mergeServerMatches(data, user.id, true);
+    lastFetchAt = Date.now();
 
     return data.length === PAGE_SIZE;
   } catch (err) {

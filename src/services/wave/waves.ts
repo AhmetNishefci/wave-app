@@ -5,6 +5,7 @@ import { getFreshSession } from "./session";
 import NetInfo from "@react-native-community/netinfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WAVE_EXPIRY_MINUTES } from "@/services/ble/constants";
+import { useBleStore } from "@/stores/bleStore";
 
 /** Result returned by sendWave with optional match data */
 export interface SendWaveResult {
@@ -27,6 +28,7 @@ const QUEUE_STORAGE_KEY = "@wave_offline_queue";
 
 interface QueuedWave {
   token: string;
+  userId: string | null;
   queuedAt: number;
 }
 
@@ -104,9 +106,31 @@ async function flushOfflineQueue(): Promise<void> {
       await new Promise((r) => setTimeout(r, FLUSH_STAGGER_MS));
     }
 
-    sendWave(queued.token).catch((e) =>
-      logger.warn("Offline wave retry failed", e),
-    );
+    try {
+      const result = await sendWave(queued.token, queued.userId);
+
+      // V4 fresh-token retry: if the target rotated tokens while we were
+      // offline, look up their fresh token by userId and retry once.
+      if (result.status === "expired_token" && queued.userId) {
+        const peers = useBleStore.getState().nearbyPeers;
+        let freshToken: string | null = null;
+        for (const [token, p] of peers) {
+          if (p.userId === queued.userId && token !== queued.token) {
+            freshToken = token;
+            break;
+          }
+        }
+        if (freshToken) {
+          logger.wave("Offline queue: retrying with fresh token", {
+            old: queued.token.substring(0, 8),
+            fresh: freshToken.substring(0, 8),
+          });
+          await sendWave(freshToken, queued.userId);
+        }
+      }
+    } catch (e) {
+      logger.warn("Offline wave retry failed", e);
+    }
   }
 
   stopNetworkListenerIfEmpty();
@@ -120,6 +144,7 @@ async function flushOfflineQueue(): Promise<void> {
  */
 export async function sendWave(
   targetEphemeralToken: string,
+  targetUserId?: string | null,
 ): Promise<SendWaveResult> {
   try {
     const session = await getFreshSession();
@@ -141,7 +166,7 @@ export async function sendWave(
         });
         // Dedup: don't queue the same token twice
         if (!offlineQueue.some((w) => w.token === targetEphemeralToken)) {
-          offlineQueue.push({ token: targetEphemeralToken, queuedAt: Date.now() });
+          offlineQueue.push({ token: targetEphemeralToken, userId: targetUserId ?? null, queuedAt: Date.now() });
           persistQueue();
         }
         startNetworkListener();
@@ -218,13 +243,15 @@ export async function sendWave(
  * Undo a wave that was sent within the undo window.
  * Deletes the wave record server-side.
  */
+export type UndoResult = "success" | "expired" | "error";
+
 export async function undoWave(
   targetEphemeralToken: string,
-): Promise<boolean> {
+): Promise<UndoResult> {
   try {
     const session = await getFreshSession();
 
-    if (!session) return false;
+    if (!session) return "error";
 
     const { data, error } = await invokeWithTimeout("send-wave", {
       body: {
@@ -234,11 +261,8 @@ export async function undoWave(
     });
 
     if (error) {
-      // Distinguish transient/expected errors from genuine failures.
-      // A 400 (undo_expired) is expected — user tapped undo too late.
-      // Network/timeout errors are genuine failures worth alerting.
       logger.warn("Undo wave failed", error);
-      return false;
+      return "error";
     }
 
     // Check the response data for undo_expired — supabase.functions.invoke
@@ -247,14 +271,14 @@ export async function undoWave(
     const result = data as { status?: string; reason?: string } | null;
     if (result?.status === "error" && result?.reason === "undo_expired") {
       logger.wave("Undo failed: wave already consumed or expired");
-      return false;
+      return "expired";
     }
 
     logger.wave("Wave undone", { token: targetEphemeralToken.substring(0, 8) });
-    return true;
+    return "success";
   } catch (error) {
     logger.warn("Undo wave error", error);
-    return false;
+    return "error";
   }
 }
 

@@ -158,14 +158,13 @@ class WaveBleManager {
 
   /**
    * Update the advertised token (called during rotation).
+   * Throws on failure so the caller can revert the token store
+   * and engage backoff — prevents split-brain where the store
+   * has the new token but BLE broadcasts the old one.
    */
   async rotateToken(newToken: string): Promise<void> {
-    try {
-      await updateAdvertisedToken(this.buildPayload(newToken));
-      logger.ble("Token rotated");
-    } catch (error) {
-      logger.warn("Token rotation failed (next rotation retries)", error);
-    }
+    await updateAdvertisedToken(this.buildPayload(newToken));
+    logger.ble("Token rotated");
   }
 
   /**

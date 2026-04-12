@@ -84,7 +84,7 @@ export default function MainLayout() {
     const unseenMatch = matches.find((m) => {
       if (m.seen) return false;
       const ageMs = Date.now() - new Date(m.createdAt).getTime();
-      return ageMs < M3_RECENCY_MS;
+      return ageMs >= 0 && ageMs < M3_RECENCY_MS;
     });
     if (unseenMatch && !useMatchStore.getState().latestUnseenMatch) {
       useMatchStore.setState({ latestUnseenMatch: unseenMatch });

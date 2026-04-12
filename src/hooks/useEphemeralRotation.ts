@@ -74,8 +74,6 @@ export function useEphemeralRotation() {
         useTokenStore.getState().setRotating(false);
 
         if (result) {
-          consecutiveFailures = 0;
-
           // Snapshot old token so we can revert if the BLE advertiser
           // fails to update — prevents split-brain where tokenStore has
           // the new token but BLE is still broadcasting the old one (V1 fix).
@@ -85,20 +83,33 @@ export function useEphemeralRotation() {
 
           applyTokenResult(result);
 
-          // Clear stale state AFTER new token is confirmed (C4 fix).
-          // Previously these were cleared before fetch, causing state loss
-          // on transient failures.
-          useWaveStore.getState().resetIncomingWaveTokens();
-          useMatchStore.getState().clearMatchedTokens();
-
           try {
             await waveBleManager.rotateToken(result.token);
+
+            // Clear stale wave state only after the full rotation pipeline
+            // (fetch + BLE) succeeds. If BLE fails and we revert to the old
+            // token, keeping the old wave state is correct — incoming waves
+            // and matched tokens still reference the old token that BLE is
+            // actually broadcasting. Previously these ran before the try,
+            // which cleared badges that were still relevant on BLE failure.
+            useWaveStore.getState().resetIncomingWaveTokens();
+            useMatchStore.getState().clearMatchedTokens();
+
+            consecutiveFailures = 0;
           } catch (rotateErr) {
             // Revert tokenStore to match what the advertiser is actually
-            // broadcasting. The next scheduled rotation will retry.
+            // broadcasting. Count this as a failure so backoff kicks in.
             logger.error("BLE advertiser rotation failed — reverting tokenStore", rotateErr);
             if (prevToken && prevExpiry) {
               useTokenStore.getState().setToken(prevToken, prevExpiry);
+            }
+            consecutiveFailures++;
+
+            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+              useTokenStore.getState().setTokenStale(true);
+              logger.warn(
+                `Token rotation failed ${consecutiveFailures} consecutive times (BLE) — marked stale`,
+              );
             }
           }
         } else {

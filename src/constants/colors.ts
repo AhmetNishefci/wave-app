@@ -1,30 +1,33 @@
 /**
- * Design token constants for use in Ionicon color props, inline styles,
- * and native components (Switch, ActivityIndicator, RefreshControl) that
- * can't use Tailwind class names.
+ * Dynamic color constants for use in native component props (Switch,
+ * ActivityIndicator, RefreshControl, Ionicons) that can't use Tailwind classes.
  *
- * Single source of truth — matches tailwind.config.js wave-* tokens.
+ * Reads from themeStore at access time, so colors update when the user
+ * switches themes. For Tailwind className usage, the CSS variables in
+ * ThemeProvider handle the updates automatically.
  */
-export const COLORS = {
-  primary: "#6c63ff",
-  accent: "#00d4aa",
-  text: "#e0e0e0",
-  muted: "#8585a0",     // Bumped from #666680 for WCAG AA compliance (~4.6:1 on #0a0a0a)
-  bg: "#0a0a0a",
-  surface: "#1a1a2e",
-  danger: "#ff4757",
-  wave: "#4ecdc4",
-  match: "#ec4899",
-  white: "#ffffff",
-  black: "#000000",
+import { useThemeStore } from "@/stores/themeStore";
+import { MIDNIGHT_DEFAULT, type ThemeColors } from "@/constants/themes";
 
-  // Platform brand colors
-  snapchat: "#FFFC00",
-  google: "#ffffff",
+function getColor(prop: string): string {
+  try {
+    const colors = useThemeStore.getState().getActiveColors();
+    return colors[prop as keyof ThemeColors] ?? MIDNIGHT_DEFAULT[prop as keyof ThemeColors] ?? "";
+  } catch {
+    // Store not initialized yet (module load time) — fall back to default
+    return MIDNIGHT_DEFAULT[prop as keyof ThemeColors] ?? "";
+  }
+}
 
-  // UI-specific
-  placeholder: "#555570",   // Input placeholder text
-  switchOff: "#333345",     // Switch track when off
-  toastSuccess: "#16a34a",  // Toast success border
-  toastError: "#dc2626",    // Toast error border
-} as const;
+/**
+ * COLORS is a getter-based object. Each property reads the current theme
+ * colors at access time, ensuring native components always use the active theme.
+ *
+ * Typed as ThemeColors for autocomplete and type safety.
+ * The Proxy resolves values dynamically at runtime.
+ */
+export const COLORS: Readonly<ThemeColors> = new Proxy({} as ThemeColors, {
+  get(_target, prop: string) {
+    return getColor(prop);
+  },
+});

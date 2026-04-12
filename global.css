@@ -1,3 +1,20 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Default theme CSS variables.
+ * These are the fallback values used at build time by Tailwind.
+ * At runtime, ThemeProvider overrides them via NativeWind's vars() API.
+ */
+:root {
+  --color-wave-bg: #0a0a0a;
+  --color-wave-surface: #1a1a2e;
+  --color-wave-primary: #6c63ff;
+  --color-wave-accent: #00d4aa;
+  --color-wave-text: #e0e0e0;
+  --color-wave-muted: #8585a0;
+  --color-wave-danger: #ff4757;
+  --color-wave-wave: #4ecdc4;
+  --color-wave-match: #ec4899;
+}

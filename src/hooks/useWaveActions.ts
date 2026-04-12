@@ -18,6 +18,7 @@ export function useWaveActions(setToast: SetToast) {
   const handleWave = useCallback(async (peer: NearbyPeer) => {
     const store = useWaveStore.getState();
     if (store.hasPendingWaveTo(peer.ephemeralToken)) return;
+    if (store.wavingBackTokens.has(peer.ephemeralToken)) return;
 
     // Detect wave-back: the user is responding to someone who waved at them.
     // In this case we skip the optimistic "Undo" state — the intent is to

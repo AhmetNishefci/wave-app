@@ -30,6 +30,9 @@ import { PhoneLinkSheet } from "@/components/PhoneLinkSheet";
 import { BlockedUsersSheet } from "@/components/BlockedUsersSheet";
 import { SupportTicketSheet } from "@/components/SupportTicketSheet";
 import { LanguagePickerSheet } from "@/components/LanguagePickerSheet";
+import { ThemePickerSheet } from "@/components/ThemePickerSheet";
+import { useThemeStore } from "@/stores/themeStore";
+import { THEME_PRESETS } from "@/constants/themes";
 import { COLORS } from "@/constants/colors";
 import { getAgeFromDob } from "@/utils/age";
 import i18n from "@/i18n";
@@ -76,6 +79,9 @@ export default function SettingsScreen() {
   const [showBlockedUsers, setShowBlockedUsers] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const activeThemeId = useThemeStore((s) => s.activeThemeId);
+  const activePreset = THEME_PRESETS.find((t) => t.id === activeThemeId);
 
   // Handle editing state
   const [editingHandle, setEditingHandle] = useState(false);
@@ -424,6 +430,11 @@ export default function SettingsScreen() {
         showToast={showToast}
       />
 
+      <ThemePickerSheet
+        visible={showThemePicker}
+        onClose={() => setShowThemePicker(false)}
+      />
+
       {/* Full-screen blocking overlay while deleting */}
       <Modal visible={deleting} transparent animationType="fade">
         <View className="flex-1 bg-black/80 items-center justify-center">
@@ -539,6 +550,31 @@ export default function SettingsScreen() {
             <View className="flex-row items-center">
               <Text className="text-lg mr-2">{currentLang.flag}</Text>
               <Text className="text-white text-sm">{currentLang.name}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
+          </View>
+        </TouchableOpacity>
+      </Section>
+
+      {/* Theme */}
+      <Section title={t("settings.theme")}>
+        <TouchableOpacity
+          onPress={() => setShowThemePicker(true)}
+          activeOpacity={0.7}
+        >
+          <View className="flex-row justify-between items-center py-1.5">
+            <View className="flex-row items-center">
+              {activePreset && (
+                <View className="flex-row mr-3" style={{ gap: 4 }}>
+                  {activePreset.preview.map((color, i) => (
+                    <View
+                      key={i}
+                      style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: color }}
+                    />
+                  ))}
+                </View>
+              )}
+              <Text className="text-white text-sm">{activePreset?.name ?? "Custom"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={COLORS.muted} />
           </View>

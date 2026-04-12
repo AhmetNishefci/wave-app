@@ -42,14 +42,17 @@ export async function invokeWithTimeout<T = unknown>(
     body: options?.body,
   });
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("timeout")), timeoutMs),
-  );
+  let timer: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+  });
 
   try {
     const result = await Promise.race([invokePromise, timeoutPromise]);
+    clearTimeout(timer!);
     return result as { data: T | null; error: { message: string } | null };
   } catch (err: unknown) {
+    clearTimeout(timer!);
     const message = err instanceof Error ? err.message : "timeout";
     logger.warn(`Edge function ${functionName} failed: ${message}`, {
       functionName,

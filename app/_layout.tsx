@@ -10,6 +10,7 @@ import { supabase } from "@/services/supabase";
 import { logger } from "@/utils/logger";
 import { COLORS } from "@/constants/colors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -58,27 +59,29 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ErrorBoundary>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: COLORS.bg },
-            animation: "fade",
-          }}
-        >
-          {/* Disable back gesture on onboarding screens (H2 fix) */}
-          <Stack.Screen name="login" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="phone-login" options={{ gestureEnabled: true }} />
-          <Stack.Screen name="terms-acceptance" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="birthday" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="age-blocked" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="gender" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="note" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="nearby-alerts" options={{ gestureEnabled: false }} />
-        </Stack>
-      </ErrorBoundary>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: COLORS.bg },
+              animation: "fade",
+            }}
+          >
+            {/* Disable back gesture on onboarding screens (H2 fix) */}
+            <Stack.Screen name="login" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="phone-login" options={{ gestureEnabled: true }} />
+            <Stack.Screen name="terms-acceptance" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="birthday" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="age-blocked" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="gender" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="note" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="nearby-alerts" options={{ gestureEnabled: false }} />
+          </Stack>
+        </ErrorBoundary>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

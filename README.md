@@ -451,9 +451,15 @@ Dark theme via NativeWind/Tailwind:
 - [ ] Distance filters and radius controls
 - [ ] Server-side proximity matching via PostGIS (infrastructure already in place)
 
+#### Infrastructure & Operations
+- [ ] **Separate dev/prod Supabase projects** — all three EAS build profiles (development, preview, production) currently point to the same Supabase instance. A botched migration during development corrupts production data with no recovery. Create a second Supabase project for development, configure environment-specific credentials in each EAS profile.
+- [ ] **Edge function failure alerting** — no alerts exist when critical edge functions (`send-wave`, `assign-ephemeral-id`) start failing. Recommended: configure Sentry alert rules (error count > 5 in 10 min per function, zero invocations for 30 min). Alternative: Supabase Pro observability for latency percentiles and invocation volume dashboards.
+- [ ] **Move `SENTRY_AUTH_TOKEN` to EAS Secrets** — the token (grants write access to Sentry org) is committed to `eas.json` in version control. Run `eas secret:create --name SENTRY_AUTH_TOKEN --value "<token>" --scope project`, remove from all three env blocks in `eas.json`, then rotate the token in Sentry (old one lives in git history forever).
+- [ ] **CI/CD pipeline** — no automated lint/type-check/test gate on commits. Add GitHub Actions workflow: TypeScript type-check, ESLint, test suite (once tests exist), EAS Build trigger on main branch.
+- [ ] **Test suite** — unit tests for `check_and_create_match()` SQL function (pgTAP), `parsePayload.ts`, `useEphemeralRotation.ts`, `contentFilter.ts`. Integration tests for wave/match flow, offline queue replay, token rotation lifecycle.
+
 #### Ongoing
 - [ ] Monetization — premium features, subscription model
-- [ ] Test suite — unit tests for stores, services, BLE parsing; integration tests for wave/match
 - [ ] Database indexes at scale — `ephemeral_ids(expires_at)`, `waves(is_consumed, expires_at)`
 - [ ] Sentry performance transactions — wave lifecycle p95 latency tracking
 - [ ] Localization — expand beyond 7 languages based on user demand

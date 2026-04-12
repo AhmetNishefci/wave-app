@@ -24,12 +24,14 @@ export async function getFreshSession(): Promise<Session | null> {
   // No cached session — try an explicit refresh (e.g. after app was idle for a long time).
   // Timeout guard prevents UI freeze if the auth server is unreachable (TD-1 fix).
   logger.wave("No cached session, attempting refresh");
+  let timer: ReturnType<typeof setTimeout>;
   try {
     const refreshPromise = supabase.auth.refreshSession();
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("session_refresh_timeout")), SESSION_REFRESH_TIMEOUT_MS),
-    );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("session_refresh_timeout")), SESSION_REFRESH_TIMEOUT_MS);
+    });
     const { data: refreshed, error } = await Promise.race([refreshPromise, timeoutPromise]);
+    clearTimeout(timer!);
 
     if (error || !refreshed.session) {
       logger.warn("Session refresh failed — user must re-authenticate", error);
@@ -38,6 +40,7 @@ export async function getFreshSession(): Promise<Session | null> {
 
     return refreshed.session;
   } catch (err: unknown) {
+    clearTimeout(timer!);
     const isTimeout = err instanceof Error && err.message === "session_refresh_timeout";
     logger.warn(isTimeout ? "Session refresh timed out" : "Session refresh failed", {
       reason: isTimeout ? "timeout" : (err instanceof Error ? err.message : "unknown"),

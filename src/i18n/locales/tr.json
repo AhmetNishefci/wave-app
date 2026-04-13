@@ -267,6 +267,7 @@
     "resetThemeConfirm": "Tema varsayılan renklere (Midnight) sıfırlanacak.",
     "invalidHex": "Geçerli bir hex rengi girin (ör: #6c63ff)",
     "customHex": "Hex kodu gir",
+    "longPressHint": "İnce ayar için bir renge uzun basın",
     "hidHexInput": "Hex alanını gizle",
     "themeMidnight": "Gece Yarısı",
     "themeMidnightDesc": "Klasik mor & turkuaz",

@@ -267,6 +267,7 @@
     "resetThemeConfirm": "Le thème sera réinitialisé aux couleurs par défaut (Midnight).",
     "invalidHex": "Veuillez entrer une couleur hex valide (ex: #6c63ff)",
     "customHex": "Entrer un code hex",
+    "longPressHint": "Appui long sur une couleur pour affiner",
     "hidHexInput": "Masquer le champ hex",
     "themeMidnight": "Minuit",
     "themeMidnightDesc": "Violet & turquoise classique",

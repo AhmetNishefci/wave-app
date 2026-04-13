@@ -267,6 +267,7 @@
     "resetThemeConfirm": "Das Design wird auf die Standard-Farben (Midnight) zurückgesetzt.",
     "invalidHex": "Bitte gib eine gültige Hex-Farbe ein (z.B. #6c63ff)",
     "customHex": "Hex-Code eingeben",
+    "longPressHint": "Farbe lange drücken für Feinabstimmung",
     "hidHexInput": "Hex-Eingabe ausblenden",
     "themeMidnight": "Mitternacht",
     "themeMidnightDesc": "Klassisches Lila & Türkis",

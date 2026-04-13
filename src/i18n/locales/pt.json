@@ -267,6 +267,7 @@
     "resetThemeConfirm": "O tema será redefinido para as cores padrão (Midnight).",
     "invalidHex": "Insira uma cor hex válida (ex: #6c63ff)",
     "customHex": "Digitar código hex",
+    "longPressHint": "Segure uma cor para ajuste fino",
     "hidHexInput": "Ocultar campo hex",
     "themeMidnight": "Meia-Noite",
     "themeMidnightDesc": "Roxo & turquesa clássico",

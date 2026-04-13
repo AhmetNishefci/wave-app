@@ -267,6 +267,7 @@
     "resetThemeConfirm": "This will reset your theme to the default Midnight colors.",
     "invalidHex": "Please enter a valid hex color (e.g. #6c63ff)",
     "customHex": "Enter hex code",
+    "longPressHint": "Long press a color for fine-tuning",
     "hidHexInput": "Hide hex input",
     "themeMidnight": "Midnight",
     "themeMidnightDesc": "Classic purple & teal",

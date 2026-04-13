@@ -6,7 +6,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { useThemeStore } from "@/stores/themeStore";
 import { THEME_PRESETS, DEFAULT_THEME_ID, type ThemeColors } from "@/constants/themes";
 import { COLORS } from "@/constants/colors";
-import { impactLight } from "@/utils/haptics";
+import { impactLight, impactMedium } from "@/utils/haptics";
+import ColorPicker, { Panel1, HueSlider } from "reanimated-color-picker";
 
 // ─── Curated color palette ─────────────────────────────────────
 // 24 colors in 3 rows: vibrant spectrum, secondary hues, grayscale.
@@ -60,6 +61,8 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
   const [editingKey, setEditingKey] = useState<keyof ThemeColors | null>(null);
   const [showHexInput, setShowHexInput] = useState(false);
   const [hexInput, setHexInput] = useState("");
+  const [expandedColor, setExpandedColor] = useState<string | null>(null);
+  const lastPickerChangeRef = useRef(0);
 
   const handleSelectPreset = (themeId: string) => {
     if (themeId === activeThemeId && Object.keys(customOverrides).length === 0) return;
@@ -67,6 +70,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
     setTheme(themeId);
     setEditingKey(null);
     setShowHexInput(false);
+    setExpandedColor(null);
   };
 
   const handleReset = () => {
@@ -83,6 +87,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
             setShowCustom(false);
             setEditingKey(null);
             setShowHexInput(false);
+            setExpandedColor(null);
           },
         },
       ],
@@ -93,12 +98,14 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
     if (editingKey === key) {
       setEditingKey(null);
       setShowHexInput(false);
+      setExpandedColor(null);
       return;
     }
     const currentValue = customOverrides[key] ?? COLORS[key];
     setHexInput(currentValue);
     setEditingKey(key);
     setShowHexInput(false);
+    setExpandedColor(null);
     // Auto-scroll so the palette is visible after layout
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -113,7 +120,35 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
 
   const handlePalettePick = (color: string) => {
     if (!editingKey) return;
+    setExpandedColor(null);
     applyColor(editingKey, color);
+  };
+
+  const handlePaletteLongPress = (color: string) => {
+    impactMedium();
+    const next = expandedColor === color ? null : color;
+    setExpandedColor(next);
+    if (next) {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  };
+
+  // Live preview during drag — throttled to avoid re-rendering the tree 60fps.
+  // Calls setCustomOverride directly (no haptic during drag).
+  const handlePickerChange = ({ hex }: { hex: string }) => {
+    if (!editingKey) return;
+    const now = Date.now();
+    if (now - lastPickerChangeRef.current < 150) return;
+    lastPickerChangeRef.current = now;
+    setCustomOverride(editingKey, hex);
+  };
+
+  // Final apply on finger release — with haptic feedback.
+  const handlePickerComplete = ({ hex }: { hex: string }) => {
+    if (!editingKey) return;
+    applyColor(editingKey, hex);
   };
 
   const handleHexSubmit = () => {
@@ -202,7 +237,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
 
         {/* Custom colors toggle */}
         <TouchableOpacity
-          onPress={() => { setShowCustom(!showCustom); setEditingKey(null); setShowHexInput(false); }}
+          onPress={() => { setShowCustom(!showCustom); setEditingKey(null); setShowHexInput(false); setExpandedColor(null); }}
           className="flex-row items-center justify-center py-2 mb-3"
           activeOpacity={0.7}
         >
@@ -254,7 +289,6 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                       />
                       <View className="flex-1">
                         <Text className="text-white text-xs font-semibold">{t(labelKey)}</Text>
-                        <Text className="text-wave-muted text-xs">{color}</Text>
                       </View>
                       {isOverridden && (
                         <TouchableOpacity
@@ -282,13 +316,15 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                           <TouchableOpacity
                             key={paletteColor}
                             onPress={() => handlePalettePick(paletteColor)}
+                            onLongPress={() => handlePaletteLongPress(paletteColor)}
+                            delayLongPress={300}
                             style={{
                               width: DOT_SIZE,
                               height: DOT_SIZE,
                               borderRadius: DOT_SIZE / 2,
                               backgroundColor: paletteColor,
-                              borderWidth: isSelected ? 2.5 : 1,
-                              borderColor: isSelected ? "#ffffff" : "rgba(255,255,255,0.12)",
+                              borderWidth: isSelected || expandedColor === paletteColor ? 2.5 : 1,
+                              borderColor: isSelected || expandedColor === paletteColor ? "#ffffff" : "rgba(255,255,255,0.12)",
                             }}
                           />
                         );
@@ -296,6 +332,28 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                     </View>
                   ))}
                 </View>
+
+                {/* Hint for long-press */}
+                {!expandedColor && (
+                  <Text className="text-wave-muted text-xs text-center mt-2">
+                    {t("settings.longPressHint")}
+                  </Text>
+                )}
+
+                {/* Color picker — shown on long-press of a palette dot */}
+                {expandedColor && (
+                  <View className="mt-3">
+                    <ColorPicker
+                      value={expandedColor}
+                      onChangeJS={handlePickerChange}
+                      onCompleteJS={handlePickerComplete}
+                      style={{ gap: 12 }}
+                    >
+                      <Panel1 style={{ height: 150, borderRadius: 12 }} />
+                      <HueSlider style={{ height: 28, borderRadius: 14 }} />
+                    </ColorPicker>
+                  </View>
+                )}
 
                 <TouchableOpacity
                   onPress={() => setShowHexInput(!showHexInput)}

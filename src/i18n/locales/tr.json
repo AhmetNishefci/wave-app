@@ -181,7 +181,9 @@
     "permissionsBody": "Wave'in yakındaki insanları keşfetmesi için Bluetooth izinleri gerekiyor.",
     "connectionIssue": "Bağlantı sorunu",
     "connectionIssueBody": "Sunucuya bağlanılamadı. İnternetini kontrol edip tekrar dene.",
-    "bluetoothError": "Bluetooth keşfi başlatılamadı."
+    "bluetoothError": "Bluetooth keşfi başlatılamadı.",
+    "bluetoothOff": "Bluetooth Erişimi Gerekli",
+    "bluetoothOffBody": "Wave, yakındaki kişileri keşfetmek için Bluetooth'a ihtiyaç duyar. Ayarlar'dan etkinleştirebilirsiniz."
   },
 
   "match": {

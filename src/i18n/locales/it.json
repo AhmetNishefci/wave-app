@@ -181,7 +181,9 @@
     "permissionsBody": "Wave ha bisogno dei permessi Bluetooth per scoprire chi c'è vicino a te.",
     "connectionIssue": "Problema di connessione",
     "connectionIssueBody": "Impossibile connettersi al server. Controlla la connessione e riprova.",
-    "bluetoothError": "Impossibile avviare la scoperta Bluetooth."
+    "bluetoothError": "Impossibile avviare la scoperta Bluetooth.",
+    "bluetoothOff": "Accesso Bluetooth richiesto",
+    "bluetoothOffBody": "Wave ha bisogno del Bluetooth per scoprire le persone vicine. Puoi attivarlo nelle Impostazioni."
   },
 
   "match": {

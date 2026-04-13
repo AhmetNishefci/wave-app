@@ -181,7 +181,9 @@
     "permissionsBody": "Wave braucht Bluetooth-Berechtigungen, um Leute in der Nähe zu finden.",
     "connectionIssue": "Verbindungsproblem",
     "connectionIssueBody": "Keine Verbindung zum Server möglich. Prüf dein Internet und versuch's nochmal.",
-    "bluetoothError": "Bluetooth-Erkennung konnte nicht gestartet werden."
+    "bluetoothError": "Bluetooth-Erkennung konnte nicht gestartet werden.",
+    "bluetoothOff": "Bluetooth-Zugriff erforderlich",
+    "bluetoothOffBody": "Wave benötigt Bluetooth, um Personen in der Nähe zu entdecken. Du kannst es in den Einstellungen aktivieren."
   },
 
   "match": {

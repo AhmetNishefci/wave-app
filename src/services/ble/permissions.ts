@@ -1,4 +1,4 @@
-import { Platform, PermissionsAndroid, Linking, Alert } from "react-native";
+import { Platform, PermissionsAndroid } from "react-native";
 import { BleManager } from "react-native-ble-plx";
 import type { BlePermissionStatus } from "@/types";
 import { logger } from "@/utils/logger";
@@ -105,16 +105,3 @@ async function requestAndroidPermissions(): Promise<BlePermissionStatus> {
   }
 }
 
-/**
- * Show alert directing user to system settings when permissions are blocked.
- */
-export function showPermissionBlockedAlert(): void {
-  Alert.alert(
-    "Permissions Required",
-    "Wave needs Bluetooth permissions to discover nearby people. Please enable them in Settings.",
-    [
-      { text: "Cancel", style: "cancel" },
-      { text: "Open Settings", onPress: () => Linking.openSettings() },
-    ],
-  );
-}

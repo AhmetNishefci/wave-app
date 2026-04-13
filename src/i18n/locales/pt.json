@@ -181,7 +181,9 @@
     "permissionsBody": "O Wave precisa de permissões de Bluetooth pra descobrir pessoas por perto.",
     "connectionIssue": "Problema de conexão",
     "connectionIssueBody": "Não foi possível conectar ao servidor. Verifique sua internet e tente de novo.",
-    "bluetoothError": "Falha ao iniciar a descoberta por Bluetooth."
+    "bluetoothError": "Falha ao iniciar a descoberta por Bluetooth.",
+    "bluetoothOff": "Acesso Bluetooth necessário",
+    "bluetoothOffBody": "O Wave precisa do Bluetooth para descobrir pessoas por perto. Você pode ativá-lo nos Ajustes."
   },
 
   "match": {

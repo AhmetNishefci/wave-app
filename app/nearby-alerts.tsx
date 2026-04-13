@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, Linking, BackHandler } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Switch, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -49,21 +49,14 @@ export default function NearbyAlertsScreen() {
 
       useAuthStore.getState().setNearbyAlertsEnabled(alertsEnabled);
 
-      // Request location permission if alerts are enabled
+      // Request location permission if alerts are enabled.
+      // If denied or blocked, silently disable alerts and continue.
+      // Apple 5.1.1(iv): must not redirect to Settings after denial
+      // during onboarding. Users can re-enable later in Settings where
+      // linking to the Settings app is permitted (user-initiated action).
       if (alertsEnabled) {
         const permResult = await requestLocationPermission();
-        if (permResult === "blocked") {
-          await saveNearbyAlertsPreference(false);
-          useAuthStore.getState().setNearbyAlertsEnabled(false);
-          Alert.alert(
-            t("nearbyAlerts.locationNeeded"),
-            t("nearbyAlerts.locationDenied"),
-            [
-              { text: t("nearbyAlerts.notNow"), style: "cancel" },
-              { text: t("common.openSettings"), onPress: () => Linking.openSettings() },
-            ],
-          );
-        } else if (permResult === "denied") {
+        if (permResult === "blocked" || permResult === "denied") {
           await saveNearbyAlertsPreference(false);
           useAuthStore.getState().setNearbyAlertsEnabled(false);
         }
@@ -78,29 +71,6 @@ export default function NearbyAlertsScreen() {
     }
   };
 
-  const handleSkip = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    impactMedium();
-    setSaving(true);
-
-    // Save as disabled — must succeed so the server records
-    // nearby_alerts_onboarded: true, otherwise the user is re-routed
-    // here on every app launch (L3 fix).
-    const success = await saveNearbyAlertsPreference(false);
-    if (!success) {
-      setSaving(false);
-      savingRef.current = false;
-      Alert.alert(t("common.couldntSave"), t("nearbyAlerts.saveError"));
-      return;
-    }
-
-    useAuthStore.getState().setNearbyAlertsEnabled(false);
-
-    setSaving(false);
-    savingRef.current = false;
-    router.replace("/(main)/radar");
-  };
 
   return (
     <View
@@ -179,14 +149,6 @@ export default function NearbyAlertsScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Skip */}
-      <TouchableOpacity onPress={handleSkip} disabled={saving}>
-        <Text className="text-wave-muted text-sm">{t("nearbyAlerts.skipForNow")}</Text>
-      </TouchableOpacity>
-
-      <Text className="text-wave-muted text-xs text-center mt-4 leading-5 px-4">
-        {t("nearbyAlerts.canChange")}
-      </Text>
     </View>
   );
 }

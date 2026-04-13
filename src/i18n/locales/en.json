@@ -181,7 +181,9 @@
     "permissionsBody": "Wave needs Bluetooth permissions to discover nearby people.",
     "connectionIssue": "Connection Issue",
     "connectionIssueBody": "Could not connect to the server. Check your internet and try again.",
-    "bluetoothError": "Failed to start Bluetooth discovery."
+    "bluetoothError": "Failed to start Bluetooth discovery.",
+    "bluetoothOff": "Bluetooth Access Required",
+    "bluetoothOffBody": "Wave needs Bluetooth to discover nearby people. You can enable it in Settings."
   },
 
   "match": {

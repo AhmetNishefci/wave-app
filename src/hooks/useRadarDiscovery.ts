@@ -1,11 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useBleStore } from "@/stores/bleStore";
 import { useTokenStore } from "@/stores/tokenStore";
 import { useAuthStore } from "@/stores/authStore";
 import { waveBleManager } from "@/services/ble/bleManager";
-import { showPermissionBlockedAlert } from "@/services/ble/permissions";
 import { getCurrentLocation, updateLocationOnServer } from "@/services/location";
 import { impactLight } from "@/utils/haptics";
 import { logger } from "@/utils/logger";
@@ -27,16 +26,30 @@ export function useRadarDiscovery() {
     startingRef.current = true;
     setIsStarting(true);
     try {
-      const result = await waveBleManager.requestPermissions();
-      if (result === "blocked") {
-        showPermissionBlockedAlert();
+      // If BLE is already permanently denied ("Unauthorized"), the system
+      // dialog won't appear — the user is actively trying to use a feature
+      // that requires Bluetooth. Apple 5.1.1(iv) explicitly allows an
+      // informational message with a Settings link in this case:
+      // "If the user is trying to use a feature in the app that won't
+      // function without access, you may include a notification to inform
+      // the user and provide a link to the Settings app."
+      const currentState = useBleStore.getState().adapterState;
+      if (currentState === "Unauthorized") {
+        Alert.alert(
+          t("radar.bluetoothOff"),
+          t("radar.bluetoothOffBody"),
+          [
+            { text: t("common.cancel"), style: "cancel" },
+            { text: t("common.openSettings"), onPress: () => Linking.openSettings() },
+          ],
+        );
         return;
       }
+
+      const result = await waveBleManager.requestPermissions();
       if (result !== "granted") {
-        Alert.alert(
-          t("radar.permissionsRequired"),
-          t("radar.permissionsBody"),
-        );
+        // First denial — respect the decision. No custom message.
+        // PermissionGate stays visible for when the user is ready.
         return;
       }
 

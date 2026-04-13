@@ -183,7 +183,7 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
   const isDefault = activeThemeId === DEFAULT_THEME_ID && !hasOverrides;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} onClose={() => { setEditingKey(null); setShowHexInput(false); setExpandedColor(null); onClose(); }}>
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} style={{ maxHeight: 500 }}>
         {/* Title */}
         <Text className="text-white text-lg font-semibold text-center mb-4">
@@ -270,9 +270,11 @@ export function ThemePickerSheet({ visible, onClose }: Props) {
                           : "border-transparent bg-wave-bg"
                       }`}
                       style={
-                        isEditing || isOverridden
-                          ? { borderColor: resolvedColors.primary + "4D", backgroundColor: resolvedColors.primary + "1A" }
-                          : undefined
+                        isEditing
+                          ? { borderColor: resolvedColors.primary, backgroundColor: resolvedColors.primary + "1A" }
+                          : isOverridden
+                            ? { borderColor: resolvedColors.primary + "4D", backgroundColor: resolvedColors.primary + "1A" }
+                            : undefined
                       }
                       activeOpacity={0.7}
                     >
